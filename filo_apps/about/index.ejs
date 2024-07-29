@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Filo</title>
+
+        <script src="http://localhost:3001/js/filo-api.js"></script>
+
+        <style>
+            @font-face {
+                font-family: "Poppins";
+                src: url("/fonts/Poppins-Regular.ttf") format("truetype");
+            }
+
+            body {
+                padding-top: auto;
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-bottom: auto;
+                color: white;
+                text-align: center;
+                font-family: "Poppins";
+                overflow: hidden;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            p {
+                font-size: 18px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>About</h1>
+        <p>Filo is a new web-based operating system that aims to be both user-friendly and lightweight.</p>
+
+        <script>
+            window.onload = function() {
+                filo.ui.notify("Filo", "Welcome to Filo, a web-based operating system.", "Learn More", function() {
+                    window.open('https://www.example.com', '_blank');
+                });
+            };
+        </script>
+    </body>
+</html>
