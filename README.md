@@ -14,3 +14,16 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
      npm start
      ```
 3. Once the system has booted navigate to the URL printed to the terminal
+## API Documentation
+Including the Filo API in your project is as simple as include a script tag in your .ejs file.
+#### `<script src="/js/filo-api.js"></script>`
+### UI
+#### filo.ui.launchApp()
+Allows you to dynamically launch another app from within your app.
+##### Syntax
+```
+filo.ui.launchApp()
+filo.ui.launchApp(appId)
+filo.ui.launchApp(appId, args)
+filo.ui.launchApp(args)
+```
