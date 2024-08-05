@@ -55,6 +55,7 @@
                 color: white;
                 font-size: 18px;
                 text-decoration: none;
+                user-select: none;
             }
         </style>
     </head>
@@ -64,7 +65,7 @@
         <p>Filo is a new web-based operating system that aims to be both user-friendly and lightweight.</p>
         <div class="links">
             <div class="link">
-                <a href="https://github.com/FunnyGuy9796/filo" target="_blank">
+                <a id="github" onclick="window.open('https://github.com/FunnyGuy9796/filo', '_blank')">
                     <img src="/about/images/github.svg">
                     GitHub
                 </a>
@@ -72,9 +73,16 @@
         </div>
 
         <script>
+            const githubLink = document.getElementById("github");
+
+            filo.ui.tooltip(githubLink, "Open");
+
             window.onload = function() {
+                console.log("App ID: ", filo.appId);
+
                 filo.ui.notify("Filo", "Welcome to Filo, a web-based operating system.", "Learn More", function() {
-                    window.open('https://github.com/FunnyGuy9796/filo', '_blank');
+                    // window.open('https://github.com/FunnyGuy9796/filo', '_blank');
+                    filo.exit();
                 });
             };
         </script>

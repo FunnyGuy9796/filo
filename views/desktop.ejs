@@ -127,6 +127,7 @@
                 height: 60px;
                 background-color: #282828;
                 z-index: 1000;
+                user-select: none;
             }
 
             #taskbar p {
@@ -160,6 +161,29 @@
             .taskbar-app img {
                 width: 80%;
                 height: auto;
+            }
+
+            #tooltip {
+                display: block;
+                position: absolute;
+                padding: 8px;
+                color: white;
+                background-color: #282828;
+                border-radius: 10px;
+                box-shadow: 
+                    0 -6px 8px rgba(0, 0, 0, 0.5),
+                    0 6px 8px rgba(0, 0, 0, 0.5),
+                    -6px 0 8px rgba(0, 0, 0, 0.5),
+                    6px 0 8px rgba(0, 0, 0, 0.5);
+                text-align: center;
+                font-size: 18px;
+                font-family: "Poppins-Medium";
+                line-height: 1;
+                user-select: none;
+                transform: translateX(-50%);
+                transition: opacity 0.3s;
+                opacity: 0;
+                z-index: 1001;
             }
 
             .window {
@@ -266,7 +290,7 @@
 
     <body>
         <div id="wallpaper">
-            <img id="wallpaperImg" src="/wallpaper">
+            <img id="wallpaperImg" src="/wallpaper" draggable="false">
         </div>
 
         <div class="notify" id="notify">
@@ -280,6 +304,8 @@
             <div id="taskbar-apps"></div>
             <p id="clock">TIME</p>
         </div>
+
+        <div id="tooltip"></div>
 
         <script>
             const wallpaper = document.getElementById("wallpaper");
@@ -295,6 +321,8 @@
 
             const clock = document.getElementById("clock");
 
+            const tooltip = document.getElementById("tooltip");
+
             let isNotifying = false;
             let notifyQueue = [];
             let currNotify = null;
@@ -305,6 +333,12 @@
             let offsetY = 0;
 
             let currZ = 1;
+
+            window.currWinX = 100;
+            window.currWinY = 100;
+
+            let viewW = window.innerWidth;
+            let viewH = window.innerHeight;
 
             function delay(time) {
                 return new Promise(resolve => setTimeout(resolve, time));
@@ -327,6 +361,7 @@
                         notifyAction.onclick = function() {
                             action();
                             resolvePromise();
+                            console.log("Action: ", action);
                         };
                     }
 
@@ -345,13 +380,14 @@
                             notifyAction.onclick = function() {
                                 action();
                                 resolvePromise();
+                                console.log("Action: ", action);
                             };
                         }
                     });
 
-                    await delay(500);
+                    await delay(300);
                     closeNotify();
-                    await delay(1500);
+                    await delay(100);
                 }
 
                 isNotifying = false;
@@ -366,7 +402,7 @@
                 }
             }
 
-            function closeNotify() {
+            window.closeNotify = function() {
                 notify.style.right = "-400px";
 
                 if (currNotify) {
@@ -409,23 +445,7 @@
                 clsBtn.id = "cls-" + uuid;
                 clsBtn.className = "win-close";
                 clsBtn.onclick = function() {
-                    fetch("/stop-app/" + appId + "/" + uuid, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        }
-                    })
-                    .then(response => response.text())
-                    .then(data => {
-                        if (data != "success") {
-                            console.error("Failed to close app: ", data);
-                        }
-
-                        closeWin("win-" + uuid);
-                    })
-                    .catch(error => {
-                        console.error("Error: ", error);
-                    });
+                    stopApp(appId, uuid);
                 };
                 win.appendChild(clsBtn);
 
@@ -437,7 +457,7 @@
                 maxBtn.id = "max-" + uuid;
                 maxBtn.className = "win-max";
                 maxBtn.onclick = function() {
-                    maxWin("win-" + uuid)
+                    maxWin("win-" + uuid);
                 };
                 win.appendChild(maxBtn);
 
@@ -458,12 +478,8 @@
                 application.id = "app-" + uuid;
                 application.src = "/app/" + appId + "/" + uuid;
 
-                application.onload = function() {
+                application.onload = () => {
                     const appDoc = application.contentDocument || application.contentWindow.document;
-
-                    application.contentWindow.customData = {
-                        appId: appId
-                    };
 
                     appDoc.addEventListener("mousedown", function() {
                         topWin(win);
@@ -486,15 +502,41 @@
                 }
 
                 currZ++;
+
+                if (currWinX >= 300) {
+                    currWinX = 100;
+                    currWinY = 100;
+                } else {
+                    currWinX += 20;
+                    currWinY += 20;
+                }
+            }
+
+            window.stopApp = function(appId, uuid) {
+                fetch("/stop-app/" + appId + "/" + uuid, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.text())
+                .then(data => {
+                    if (data != "success") {
+                        console.error("Failed to close app: ", data);
+                    }
+
+                    closeWin("win-" + uuid);
+                })
+                .catch(error => {
+                    console.error("Error: ", error);
+                });
             }
 
             function closeWin(winId) {
                 const currWin = document.getElementById(winId);
 
                 if (currWin) {
-                    if (currWin.style.zIndex == currZ) {
-                        currZ--;
-                    }
+                    topWin(currWin);
 
                     currWin.style.transition = "0.3s";
                     currWin.style.transform = "scale(0.8)";
@@ -523,7 +565,7 @@
                         currWin.style.width = currWin.dataset.currW + "px";
                         currWin.style.height = currWin.dataset.currH + "px";
                         currWin.style.borderRadius = "10px";
-                        currWin.style.boxShadow = "0 -6px 8px rgba(0, 0, 0, 0.5), 0 6px 8px rgba(0, 0, 0, 0.5), -6px 0 8px rgba(0, 0, 0, 0.5), 6px 0 8px rgba(0, 0, 0, 0.5)"
+                        currWin.style.boxShadow = "0 -6px 8px rgba(0, 0, 0, 0.5), 0 6px 8px rgba(0, 0, 0, 0.5), -6px 0 8px rgba(0, 0, 0, 0.5), 6px 0 8px rgba(0, 0, 0, 0.5)";
                         currWin.dataset.isMax = "false";
                         currWin.dataset.canDrag = "true";
                         currWin.dataset.canResize = "true";
@@ -539,6 +581,8 @@
                         currWin.dataset.canResize = "false";
                     }
                 }
+
+                topWin(currWin);
             }
 
             function topWin(win) {
@@ -596,6 +640,19 @@
                     application.style.pointerEvents = "auto";
                 }
             });
+
+            window.addTooltip = function(object, x, y, text) {
+                object.onmouseenter = function() {
+                    tooltip.style.opacity = 1;
+                    tooltip.innerText = text;
+                    tooltip.style.left = x + "px";
+                    tooltip.style.top = y + "px";
+                }
+
+                object.onmouseleave = function() {
+                    tooltip.style.opacity = 0;
+                }
+            }
             
             function updateWallpaper() {
                 wallpaperImg.src = "/wallpaper";
@@ -608,25 +665,32 @@
                 if (result.message == "success") {
                     for (let i = 0; i < result.node.length; i++) {
                         const appId = result.node[i].appId;
-                        console.log("Taskbar: ", appId);
+                        console.log("Taskbar: ", result.node[i]);
 
                         const taskbarApp = document.createElement("a");
                         taskbarApp.className = "taskbar-app";
                         taskbarApp.id = "taskbar-" + appId;
-                        taskbarApp.href = "javascript:createWin('" + appId + "', 100, 100, 600, 400, false)";
+                        taskbarApp.draggable = false;
+                        taskbarApp.onclick = function() {
+                            createWin(appId, currWinX, currWinY, 600, 400, false);
+                        };
+
+                        const taskbarAppImg = document.createElement("img");
+                        taskbarAppImg.id = "taskbar-img-" + appId;
+                        taskbarAppImg.src = "/app-info/" + appId + "/icon";
+                        taskbarAppImg.draggable = false;
+                        taskbarApp.appendChild(taskbarAppImg);
+
+                        taskbarApps.appendChild(taskbarApp);
 
                         fetch("/app-info/" + appId)
                             .then(response => response.json())
                             .then(data => {
                                 console.log("App Info: ", data);
-                                const taskbarAppImg = document.createElement("img");
-                                taskbarAppImg.id = "taskbar-img-" + appId;
-                                taskbarAppImg.src = "/" + appId + "/" + data.appIcon;
-                                taskbarApp.appendChild(taskbarAppImg);
+                                const appRect = taskbarApp.getBoundingClientRect();
+                                addTooltip(taskbarApp, appRect.left + (appRect.width / 2), appRect.top - 50, data.appName);
                             })
                             .catch(error => console.error("Error: ", error));
-
-                        taskbarApps.appendChild(taskbarApp);
                     }
                 }
             }
@@ -678,6 +742,15 @@
             window.onload = function() {
                 updateTaskbar();
             };
+
+            window.addEventListener("resize", function() {
+                viewW = window.innerWidth;
+                viewH = window.innerHeight;
+            });
+
+            window.addEventListener("error", function(event) {
+                console.error("Error occurred: ", event.message);
+            });
         </script>
     </body>
 </html>

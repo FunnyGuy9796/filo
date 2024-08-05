@@ -8,12 +8,21 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
   - Essentially the main desktop environment for the system
 ## Installation Instructions
 1. Clone this repository
-2. Navigate to the cloned directory and enter the following commands
+     ```
+     git clone https://github.com/FunnyGuy9796/filo.git
+     cd filo
+     ```
+2. Configure the system by editing config.json
+   - `port`: Defines which port Filo will run on
+   - `services_path`: Defines where Filo services will be located on the host system
+   - `apps_path`: Defines where Filo applications will be located on the host system
+   - `network_required`: Defines whether a network connection is required to run Filo
+3. Navigate to the cloned directory and enter the following commands
      ```
      npm install
      npm start
      ```
-3. Once the system has booted navigate to the URL printed to the terminal
+4. Once the system has booted navigate to the URL printed to the terminal
 ## API Documentation
 Including the Filo API in your project is as simple as include a script tag in your .ejs file.
 #### `<script src="/js/filo-api.js"></script>`

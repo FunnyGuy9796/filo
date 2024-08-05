@@ -236,15 +236,26 @@ function startAppsProcessor() {
         const appData = fs.readFileSync(appConfigFile, "utf8");
         const appConfigData = JSON.parse(appData);
 
+        const appName = appConfigData.name;
         const appIndexFile = appConfigData.index_file;
         const appIconFile = appConfigData.icon_file;
 
         app.get("/app-info/" + appId + "/icon", (req, res) => {
-            fs.access()
+            let iconFilePath = path.join(absPath, appIconFile);
+
+            fs.access(iconFilePath, fs.constants.F_OK, (err) => {
+                if (err) {
+                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Icon file for app" + chalk.bold("[" + appId + "]") + " could not be found");
+                    res.status(404).send("icon file not found");
+                } else {
+                    res.sendFile(iconFilePath);
+                }
+            });
         });
 
         const appInfo = {
             appId: appId,
+            appName: appName,
             appFile: appIndexFile,
             appIcon: appIconFile
         }
