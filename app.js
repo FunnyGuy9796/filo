@@ -15,6 +15,13 @@ let fsStatus = false;
 let netStatus = false;
 let memStatus = false;
 
+const data = fs.readFileSync(configFile, "utf8");
+const configData = JSON.parse(data);
+
+const netRequired = configData.network_required;
+const servicesPath = configData.services_path;
+const appsPath = configData.apps_path;
+
 function waitForCondition(interval = 100) {
     return new Promise((resolve, reject) => {
         const timer = setInterval(() => {
@@ -27,15 +34,11 @@ function waitForCondition(interval = 100) {
         setTimeout(() => {
             clearInterval(timer);
             reject(new Error('Failed to access one or more system modules'));
-        }, 100);
+        }, 1000);
     });
 }
 
 async function stopService(serviceId) {
-    const data = fs.readFileSync(configFile, "utf8");
-    const configData = JSON.parse(data);
-
-    const servicesPath = configData.services_path;
     const resolvedPath = require.resolve(path.join(servicesPath, serviceId, "main.js"));
 
     if (require.cache[resolvedPath]) {
@@ -55,11 +58,7 @@ async function startService(serviceId) {
     let serviceExists = rows.some(row => row.id === serviceId);
 
     if (!serviceExists) {
-        const data = fs.readFileSync(configFile, "utf8");
-        const configData = JSON.parse(data);
-
-        const servicesPath = configData.services_path;
-        const absPath = path.join(servicesPath, serviceId, "main.js");
+        const absPath = path.join(servicesPath, serviceId, "index.js");
 
         if (fs.existsSync(absPath)) {
             const service = require(absPath);
@@ -129,10 +128,6 @@ async function startServices() {
 }
 
 function startApp(appId, uuid) {
-    const data = fs.readFileSync(configFile, "utf8");
-    const configData = JSON.parse(data);
-
-    const appsPath = configData.apps_path;
     const absPath = path.join(appsPath, appId);
 
     if (fs.existsSync(absPath)) {
@@ -226,12 +221,35 @@ function startAppsProcessor() {
 
     app.post("/stop-app/:appId/:uuid", (req, res) => {
         const { appId, uuid } = req.params;
-        const appRunning = memory.readData("applications", "id = '" + appId + uuid + "'");
 
         memory.removeData("applications", "id = '" + appId + uuid + "'");
         console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Stopped application | App ID: " + appId + uuid);
 
         res.status(200).send("success");
+    });
+
+    app.get("/app-info/:appId", (req, res) => {
+        const { appId } = req.params;
+
+        const absPath = path.join(appsPath, appId);
+        const appConfigFile = path.join(absPath, "appConfig.json");
+        const appData = fs.readFileSync(appConfigFile, "utf8");
+        const appConfigData = JSON.parse(appData);
+
+        const appIndexFile = appConfigData.index_file;
+        const appIconFile = appConfigData.icon_file;
+
+        app.get("/app-info/" + appId + "/icon", (req, res) => {
+            fs.access()
+        });
+
+        const appInfo = {
+            appId: appId,
+            appFile: appIndexFile,
+            appIcon: appIconFile
+        }
+
+        res.status(200).json(appInfo);
     });
 
     console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Apps Processor.. [" + chalk.green.bold("OK") + "]");
@@ -242,9 +260,6 @@ async function boot() {
         await waitForCondition();
 
         try {
-            const data = fs.readFileSync(configFile, "utf8");
-            const configData = JSON.parse(data);
-
             console.log(chalk.cyan.bold("[FILO/CONFIG]") + " -> System configurations loaded successfully");
 
             const PORT = configData.port;
@@ -362,13 +377,13 @@ filesystem.checkFs((status, message) => {
     }
 });
 
-network.checkNet("http://www.example.com", (connected, message) => {
+network.checkNet("http://www.example.com", netRequired, (connected, message) => {
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Network.. " + message);
 
     if (connected) {
         netStatus = true;
     } else {
-        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> " + chalk.red.bold("Network") + " | A network connection is required for certain components of Filo to function.");
+        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> " + chalk.red.bold("Network") + " | A network connection is required for certain components of Filo to function");
     }
 });
 

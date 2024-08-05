@@ -2,5 +2,6 @@
     "standalone": false,
     "port": 3001,
     "services_path": "/home/christopher/Documents/filo/filo_services",
-    "apps_path": "/home/christopher/Documents/filo/filo_apps"
+    "apps_path": "/home/christopher/Documents/filo/filo_apps",
+    "network_required": false
 }

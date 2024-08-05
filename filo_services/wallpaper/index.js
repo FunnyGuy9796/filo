@@ -1,5 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const express = require('express');
+const router = express.Router();
 const chalk = require("chalk");
 const memory = require("../../filo_modules/mem");
 const dataFile = path.join(__dirname, "data.json");
@@ -66,6 +68,7 @@ function stop() {
 }
 
 module.exports = {
+    router,
     init,
     stop,
     setWallpaper

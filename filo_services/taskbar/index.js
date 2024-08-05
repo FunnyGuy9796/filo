@@ -14,13 +14,13 @@ function init() {
     const data = fs.readFileSync(dataFile, "utf8");
     const taskbarData = JSON.parse(data);
 
-    taskbarData.forEach((item) => {
+    for (const key in taskbarData) {
         const memData = [
-            { appId: item.id }
+            { appId: taskbarData[key] }
         ];
 
         memory.addData("taskbar", cols.map(col => col.name), memData);
-    });
+    }
 }
 
 function stop() {

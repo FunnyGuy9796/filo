@@ -1,14 +1,8 @@
 class filo {
     static ui = class {
-        static launchApp(appId) {
+        static launchApp({ id = window.customData.appId, x = 100, y = 100, width = 600, height = 400, isMax = false }) {
             if (window.parent && typeof window.parent.createWin === "function") {
-                const x = 100, y = 100, width = 600, height = 400;
-
-                if (appId == undefined) {
-                    window.parent.createWin(window.customData.appId, x, y, width, height);
-                } else {
-                    window.parent.createWin(appId, x, y, width, height);
-                }
+                window.parent.createWin(id, x, y, width, height, isMax);
             } else {
                 console.error("launchApp(): Parent function is not available");
             }

@@ -1,4 +1,5 @@
 {
     "name": "About",
-    "index_file": "index.ejs"
+    "index_file": "index.ejs",
+    "icon_file": "images/github.svg"
 }

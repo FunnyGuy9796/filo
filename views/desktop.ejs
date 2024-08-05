@@ -5,8 +5,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Filo</title>
 
-        <script src="http://localhost:3001/js/filo-api.js"></script>
-
         <style>
             @font-face {
                 font-family: "Poppins";
@@ -121,20 +119,20 @@
                 background-color: #005f9e;
             }
 
-            #right-widget {
+            #taskbar {
                 position: absolute;
-                right: 0;
+                left: 0;
                 bottom: 0;
-                width: 15%;
+                width: 100%;
                 height: 60px;
                 background-color: #282828;
-                border-radius: 10px 0 0 0;
                 z-index: 1000;
             }
 
-            #right-widget p {
-                width: 100%;
-                height: 100%;
+            #taskbar p {
+                position: absolute;
+                top: 0;
+                right: 20px;
                 padding-top: 3px;
                 color: white;
                 text-align: center;
@@ -144,15 +142,24 @@
                 user-select: none;
             }
 
-            #taskbar {
+            #taskbar-apps {
                 position: absolute;
-                left: 0;
-                bottom: 0;
+                left: 20px;
                 width: 80%;
-                height: 60px;
-                background-color: #282828;
-                border-radius: 0 10px 0 0;
-                z-index: 1000;
+            }
+
+            .taskbar-app {
+                display: block;
+                margin-top: 10px;
+                margin-left: 5px;
+                margin-right: 5px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .taskbar-app img {
+                width: 80%;
+                height: auto;
             }
 
             .window {
@@ -269,22 +276,22 @@
             <a class="notify-action" id="notify-action"></a>
         </div>
 
-        <div id="right-widget">
-            <p id="clock">TIME</p>
-        </div>
-
         <div id="taskbar">
-
+            <div id="taskbar-apps"></div>
+            <p id="clock">TIME</p>
         </div>
 
         <script>
             const wallpaper = document.getElementById("wallpaper");
             const wallpaperImg = document.getElementById("wallpaperImg");
+
             const notify = document.getElementById("notify");
             const notifyClose = document.getElementById("notify-close");
             const notifyTitle = document.getElementById("notify-title");
             const notifyBody = document.getElementById("notify-body");
             const notifyAction = document.getElementById("notify-action");
+
+            const taskbarApps = document.getElementById("taskbar-apps");
 
             const clock = document.getElementById("clock");
 
@@ -299,8 +306,8 @@
 
             let currZ = 1;
 
-            function delay() {
-                return new Promise(resolve => setTimeout(resolve, 0));
+            function delay(time) {
+                return new Promise(resolve => setTimeout(resolve, time));
             }
 
             async function notifyLoop() {
@@ -373,7 +380,7 @@
                 }
             }
 
-            window.createWin = function(appId, x, y, width, height) {
+            window.createWin = function(appId, x, y, width, height, isMax) {
                 let uuid = Math.floor(Math.random() * 1001);
                 while (windows.some(win => win.uid === uuid)) {
                     uuid = Math.floor(Math.random() * 1001);
@@ -394,6 +401,9 @@
                 win.dataset.currH = height;
                 win.dataset.canDrag = "true";
                 win.dataset.isDragging = "false";
+                win.dataset.canResize = "true";
+                win.dataset.isResizing = "false";
+                win.dataset.isMax = "false";
 
                 const clsBtn = document.createElement("a");
                 clsBtn.id = "cls-" + uuid;
@@ -407,14 +417,16 @@
                     })
                     .then(response => response.text())
                     .then(data => {
-                        console.log(data);
+                        if (data != "success") {
+                            console.error("Failed to close app: ", data);
+                        }
 
                         closeWin("win-" + uuid);
                     })
                     .catch(error => {
                         console.error("Error: ", error);
                     });
-                }
+                };
                 win.appendChild(clsBtn);
 
                 const clsImg = document.createElement("img");
@@ -424,6 +436,9 @@
                 const maxBtn = document.createElement("a");
                 maxBtn.id = "max-" + uuid;
                 maxBtn.className = "win-max";
+                maxBtn.onclick = function() {
+                    maxWin("win-" + uuid)
+                };
                 win.appendChild(maxBtn);
 
                 const maxImg = document.createElement("img");
@@ -466,6 +481,10 @@
                     zIndex: currZ
                 });
 
+                if (isMax) {
+                    maxWin(win.id);
+                }
+
                 currZ++;
             }
 
@@ -490,6 +509,34 @@
                         const index = windows.indexOf(winPair);
 
                         windows.splice(index, 1);
+                    }
+                }
+            }
+
+            function maxWin(winId) {
+                const currWin = document.getElementById(winId);
+
+                if (currWin) {
+                    if (currWin.dataset.isMax === "true") {
+                        currWin.style.left = currWin.dataset.currX + "px";
+                        currWin.style.top = currWin.dataset.currY + "px";
+                        currWin.style.width = currWin.dataset.currW + "px";
+                        currWin.style.height = currWin.dataset.currH + "px";
+                        currWin.style.borderRadius = "10px";
+                        currWin.style.boxShadow = "0 -6px 8px rgba(0, 0, 0, 0.5), 0 6px 8px rgba(0, 0, 0, 0.5), -6px 0 8px rgba(0, 0, 0, 0.5), 6px 0 8px rgba(0, 0, 0, 0.5)"
+                        currWin.dataset.isMax = "false";
+                        currWin.dataset.canDrag = "true";
+                        currWin.dataset.canResize = "true";
+                    } else if (currWin.dataset.isMax === "false") {
+                        currWin.style.left = 0;
+                        currWin.style.top = 0;
+                        currWin.style.width = "100%";
+                        currWin.style.height = "calc(100% - 60px)";
+                        currWin.style.borderRadius = 0;
+                        currWin.style.boxShadow = "none";
+                        currWin.dataset.isMax = "true";
+                        currWin.dataset.canDrag = "false";
+                        currWin.dataset.canResize = "false";
                     }
                 }
             }
@@ -554,6 +601,36 @@
                 wallpaperImg.src = "/wallpaper";
             }
 
+            async function updateTaskbar() {
+                const response = await fetch("/api/mem/readNode/taskbar");
+                const result = await response.json();
+
+                if (result.message == "success") {
+                    for (let i = 0; i < result.node.length; i++) {
+                        const appId = result.node[i].appId;
+                        console.log("Taskbar: ", appId);
+
+                        const taskbarApp = document.createElement("a");
+                        taskbarApp.className = "taskbar-app";
+                        taskbarApp.id = "taskbar-" + appId;
+                        taskbarApp.href = "javascript:createWin('" + appId + "', 100, 100, 600, 400, false)";
+
+                        fetch("/app-info/" + appId)
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log("App Info: ", data);
+                                const taskbarAppImg = document.createElement("img");
+                                taskbarAppImg.id = "taskbar-img-" + appId;
+                                taskbarAppImg.src = "/" + appId + "/" + data.appIcon;
+                                taskbarApp.appendChild(taskbarAppImg);
+                            })
+                            .catch(error => console.error("Error: ", error));
+
+                        taskbarApps.appendChild(taskbarApp);
+                    }
+                }
+            }
+
             function updateTime() {
                 const days = [
                     "Sun",
@@ -599,7 +676,7 @@
             setInterval(updateTime, 1000);
 
             window.onload = function() {
-                createWin("about", 100, 100, 600, 400);
+                updateTaskbar();
             };
         </script>
     </body>
