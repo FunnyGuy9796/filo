@@ -271,7 +271,7 @@ async function boot() {
         await waitForCondition();
 
         try {
-            console.log(chalk.cyan.bold("[FILO/CONFIG]") + " -> System configurations loaded successfully");
+            console.log(chalk.cyan.bold("[FILO/CONFIG]") + " -> System config.. [" + chalk.green.bold("OK") + "]");
 
             const PORT = configData.port;
 
