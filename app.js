@@ -6,6 +6,9 @@ const filesystem = require("./filo_modules/fs");
 const network = require("./filo_modules/net");
 const memory = require("./filo_modules/mem");
 
+const wifi = require("node-wifi");
+
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const configFile= "./config.json";
@@ -22,10 +25,14 @@ const netRequired = configData.network_required;
 const servicesPath = configData.services_path;
 const appsPath = configData.apps_path;
 
+wifi.init({
+    iface: null
+});
+
 function waitForCondition(interval = 100) {
     return new Promise((resolve, reject) => {
         const timer = setInterval(() => {
-            if (fsStatus && netStatus && memStatus) {
+            if (fsStatus && memStatus) {
                 clearInterval(timer);
                 resolve();
             }
@@ -266,6 +273,39 @@ function startAppsProcessor() {
     console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Apps Processor.. [" + chalk.green.bold("OK") + "]");
 }
 
+function getActiveInterfaces() {
+    const interfaces = os.networkInterfaces();
+    const activeInterfaces = [];
+
+    for (const iface in interfaces) {
+        interfaces[iface].forEach(details => {
+            if (details.family === 'IPv4' && !details.internal) {
+                activeInterfaces.push({
+                    name: iface,
+                    address: details.address,
+                    type: iface.includes('eth') ? 'Ethernet' : 'Wi-Fi'
+                });
+            }
+        });
+    }
+
+    return activeInterfaces;
+}
+
+function execCommand(command) {
+    return new Promise((resolve, reject) => {
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else if (stderr) {
+                reject(stderr);
+            } else {
+                resolve(stdout);
+            }
+        });
+    });
+}
+
 async function boot() {
     try {
         await waitForCondition();
@@ -283,11 +323,32 @@ async function boot() {
 
             app.use(express.json());
 
-            app.get("/", (req, res) => {
+            app.get("/", async (req, res) => {
                 app.use(express.static(path.join(__dirname, 'public')));
                 app.set("views", path.join(__dirname, "views"));
 
-                res.render("desktop");
+                res.redirect("/get-connected");
+
+                if (!netStatus) {
+                    
+                } else {
+                    res.render("desktop");
+                }
+            });
+
+            app.get("/get-connected", async (req, res) => {
+                try {
+                    const networks = await wifi.scan();
+                    const currCons = await wifi.getCurrentConnections();
+                    const conNet = currCons.length > 0 ? currCons[0] : null;
+                    const actInts = getActiveInterfaces();
+
+                    return res.render("network", { networks, conNet, actInts});
+                } catch (error) {
+                    console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("SCANNING NETWORKS OR GETTING CONNECTION STATUS: ") + error);
+                    
+                    return res.render("network", { networks: [], conNet: null, actInts: [] });
+                }
             });
 
             app.use("/api/mem", memory.router);
