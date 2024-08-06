@@ -14,7 +14,7 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
      git clone https://github.com/FunnyGuy9796/filo.git
      cd filo
      ```
-2. Configure the system by editing config.json
+2. Configure the system by editing `config.json`
    - `port` Defines which port Filo will run on
    - `services_path` Defines where Filo services will be located on the host system
    - `apps_path` Defines where Filo applications will be located on the host system
