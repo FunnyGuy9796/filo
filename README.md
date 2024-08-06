@@ -15,10 +15,10 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
      cd filo
      ```
 2. Configure the system by editing `config.json`
-   - `port` Defines which port Filo will run on
-   - `services_path` Defines where Filo services will be located on the host system
-   - `apps_path` Defines where Filo applications will be located on the host system
-   - `network_required` Defines whether a network connection is required to run Filo
+   - `port`: Defines which port Filo will run on
+   - `services_path`: Defines where Filo services will be located on the host system
+   - `apps_path`: Defines where Filo applications will be located on the host system
+   - `network_required`: Defines whether a network connection is required to run Filo
 3. After ensuring proper configurations run the following commands
      ```
      npm install
