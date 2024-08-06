@@ -43,11 +43,11 @@ filo.ui.launchApp(args)
 ID of the app. If not provided, a new instance of the current app will be launched.
 ##### args `(Object)`
 Arguments to decide how the app is launched.
-- `x` The X position of the app window. `(in pixels)`
-- `y` The Y position of the app window. `(in pixels)`
-- `width` The width of the app window. `(in pixels)`
-- `height` The height of the app window. `(in pixels)`
-- `isMax` Determines whether the app should start maximized or not `(boolean)`
+- `x`: The X position of the app window. `(in pixels)`
+- `y`: The Y position of the app window. `(in pixels)`
+- `width`: The width of the app window. `(in pixels)`
+- `height`: The height of the app window. `(in pixels)`
+- `isMax`: Determines whether the app should start maximized or not `(boolean)`
 #### filo.ui.notify()
 Allows you to display a notification on the desktop.
 #### Syntax
