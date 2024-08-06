@@ -19,12 +19,12 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
    - `services_path` Defines where Filo services will be located on the host system
    - `apps_path` Defines where Filo applications will be located on the host system
    - `network_required` Defines whether a network connection is required to run Filo
-3. Navigate to the cloned directory and enter the following commands
+3. After ensuring proper configurations run the following commands
      ```
      npm install
      npm start
      ```
-4. Once the system has booted navigate to the URL printed to the terminal
+4. Once the system has booted ensure that all components have started successfully and navigate to the URL printed to the terminal
 ## API Documentation - WIP
 Including the Filo API in your project is as simple as include a script tag in your .ejs file.
 #### `<script src="/js/filo-api.js"></script>`
