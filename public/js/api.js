@@ -93,6 +93,14 @@ class filo {
                 }
             });
         }
+
+        static exit() {
+            if (window.parent && typeof window.parent.stopApp === "function") {
+                window.parent.stopApp(window.location.pathname.split("/")[2], window.location.pathname.split("/")[3]);
+            } else {
+                console.error("exit(): Parent function is not available");
+            }
+        }
     }
 
     static mem = class {
@@ -175,11 +183,6 @@ class filo {
             console.log("sys.stopService(): ", response);
             return response;
         }
-    }
-
-    static exit() {
-        console.log("exit() called from app ", window.location.pathname.split("/")[2] + window.location.pathname.split("/")[3]);
-        window.parent.stopApp(window.location.pathname.split("/")[2], window.location.pathname.split("/")[3]);
     }
 }
 

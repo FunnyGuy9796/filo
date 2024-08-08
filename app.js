@@ -1,12 +1,13 @@
 const express = require("express");
+const bodyParser = require('body-parser');
 const chalk = require("chalk");
 const app = express();
+
+const crypto = require("crypto");
 
 const filesystem = require("./filo_modules/fs");
 const network = require("./filo_modules/net");
 const memory = require("./filo_modules/mem");
-
-const wifi = require("node-wifi");
 
 const os = require("os");
 const fs = require("fs");
@@ -15,7 +16,6 @@ const configFile= "./config.json";
 const servicesFile = "./services.json";
 
 let fsStatus = false;
-let netStatus = false;
 let memStatus = false;
 
 const data = fs.readFileSync(configFile, "utf8");
@@ -24,10 +24,6 @@ const configData = JSON.parse(data);
 const netRequired = configData.network_required;
 const servicesPath = configData.services_path;
 const appsPath = configData.apps_path;
-
-wifi.init({
-    iface: null
-});
 
 function waitForCondition(interval = 100) {
     return new Promise((resolve, reject) => {
@@ -43,6 +39,13 @@ function waitForCondition(interval = 100) {
             reject(new Error('Failed to access one or more system modules'));
         }, 1000);
     });
+}
+
+function genToken(username, password) {
+    const data = username + password + crypto.randomBytes(16).toString("hex");
+    const token = crypto.createHash("sha256").update(data).digest("hex");
+
+    return token;
 }
 
 async function stopService(serviceId) {
@@ -273,39 +276,6 @@ function startAppsProcessor() {
     console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Apps Processor.. [" + chalk.green.bold("OK") + "]");
 }
 
-function getActiveInterfaces() {
-    const interfaces = os.networkInterfaces();
-    const activeInterfaces = [];
-
-    for (const iface in interfaces) {
-        interfaces[iface].forEach(details => {
-            if (details.family === 'IPv4' && !details.internal) {
-                activeInterfaces.push({
-                    name: iface,
-                    address: details.address,
-                    type: iface.includes('eth') ? 'Ethernet' : 'Wi-Fi'
-                });
-            }
-        });
-    }
-
-    return activeInterfaces;
-}
-
-function execCommand(command) {
-    return new Promise((resolve, reject) => {
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                reject(error);
-            } else if (stderr) {
-                reject(stderr);
-            } else {
-                resolve(stdout);
-            }
-        });
-    });
-}
-
 async function boot() {
     try {
         await waitForCondition();
@@ -318,37 +288,34 @@ async function boot() {
             startServices();
             startAppsProcessor();
 
+            const columns = [
+                { name: "token", type: "TEXT" },
+                { name: "username", type: "TEXT" }
+            ];
+
+            memory.createNode("tokens", columns);
+
             app.use(express.static(path.join(__dirname, 'public')));
             app.set("view engine", "ejs");
 
             app.use(express.json());
+            app.use(bodyParser.urlencoded({ extended: true }));
 
             app.get("/", async (req, res) => {
                 app.use(express.static(path.join(__dirname, 'public')));
                 app.set("views", path.join(__dirname, "views"));
 
-                res.redirect("/get-connected");
+                let tokens = memory.readNode("tokens");
+                let auth = tokens.map(row => row.token);
+                auth = auth.join(", ");
+                let username = tokens.map(row => row.username);
 
-                if (!netStatus) {
-                    
-                } else {
-                    res.render("desktop");
+                if (auth != "") {
+                    console.log(auth);
+
                 }
-            });
 
-            app.get("/get-connected", async (req, res) => {
-                try {
-                    const networks = await wifi.scan();
-                    const currCons = await wifi.getCurrentConnections();
-                    const conNet = currCons.length > 0 ? currCons[0] : null;
-                    const actInts = getActiveInterfaces();
-
-                    return res.render("network", { networks, conNet, actInts});
-                } catch (error) {
-                    console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("SCANNING NETWORKS OR GETTING CONNECTION STATUS: ") + error);
-                    
-                    return res.render("network", { networks: [], conNet: null, actInts: [] });
-                }
+                res.render("desktop");
             });
 
             app.use("/api/mem", memory.router);
@@ -366,6 +333,27 @@ async function boot() {
                         res.sendFile(wallpaperPath);
                     }
                 });
+            });
+
+            app.post("/login", (req, res) => {
+                const username = req.body.username;
+                const password = req.body.password;
+
+                const token = genToken(username, password);
+
+                const columns = [
+                    { name: "token", type: "TEXT" }
+                ];
+            
+                const tokenData = [
+                    { token: token }
+                ];
+
+                memory.addData("tokens", columns.map(col => col.name), tokenData);
+
+                console.log(chalk.cyan.bold("[FILO/USER]") + " -> Signed in as " + chalk.bold(username));
+
+                res.redirect("/");
             });
 
             app.listen(PORT, () => {

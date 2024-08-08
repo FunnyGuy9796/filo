@@ -1,4 +1,4 @@
-> [!CAUTION]
+> [!WARNING]
 > Filo is in an early developmental state, while each feature is tested before being released issues may still arise upon use. The developers of Filo or any related software are not responsible for anything that may occur to the host system or any other software or hardware components.
 # Filo
 Filo is a new web-based operating system that aims to be both user-friendly and lightweight.
@@ -15,10 +15,10 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
      cd filo
      ```
 2. Configure the system by editing `config.json`
-   - `port`: Defines which port Filo will run on
-   - `services_path`: Defines where Filo services will be located on the host system
-   - `apps_path`: Defines where Filo applications will be located on the host system
-   - `network_required`: Defines whether a network connection is required to run Filo
+   - `port` - Defines which port Filo will run on
+   - `services_path` - Defines where Filo services will be located on the host system
+   - `apps_path` - Defines where Filo applications will be located on the host system
+   - `network_required` - Defines whether a network connection is required to run Filo
 3. After ensuring proper configurations run the following commands
      ```
      npm install
@@ -43,11 +43,11 @@ filo.ui.launchApp(args)
 ID of the app. If not provided, a new instance of the current app will be launched.
 ##### args `(Object)`
 Arguments to decide how the app is launched.
-- `x`: The X position of the app window. `(in pixels)`
-- `y`: The Y position of the app window. `(in pixels)`
-- `width`: The width of the app window. `(in pixels)`
-- `height`: The height of the app window. `(in pixels)`
-- `isMax`: Determines whether the app should start maximized or not `(boolean)`
+- `x` - The X position of the app window. `(in pixels)`
+- `y` - The Y position of the app window. `(in pixels)`
+- `width` - The width of the app window. `(in pixels)`
+- `height` - The height of the app window. `(in pixels)`
+- `isMax` - Determines whether the app should start maximized or not `(boolean)`
 #### filo.ui.notify()
 Allows you to display a notification on the desktop.
 #### Syntax

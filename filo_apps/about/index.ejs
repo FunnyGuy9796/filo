@@ -67,7 +67,6 @@
             <div class="link">
                 <a id="github" onclick="window.open('https://github.com/FunnyGuy9796/filo', '_blank')">
                     <img src="/about/images/github.svg">
-                    GitHub
                 </a>
             </div>
         </div>
@@ -75,11 +74,9 @@
         <script>
             const githubLink = document.getElementById("github");
 
-            filo.ui.tooltip(githubLink, "Open");
+            filo.ui.tooltip(githubLink, "GitHub");
 
             window.onload = function() {
-                console.log("App ID: ", filo.appId);
-
                 filo.ui.notify("Filo", "Welcome to Filo, a web-based operating system.", "Learn More", function() {
                     window.open('https://github.com/FunnyGuy9796/filo', '_blank');
                 });
