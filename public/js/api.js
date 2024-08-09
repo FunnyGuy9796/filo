@@ -173,7 +173,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.createNode(): ", result);
             return result;
         }
 
@@ -187,7 +186,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.addData(): ", result);
             return result;
         }
 
@@ -201,7 +199,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.deleteNode(): ", result);
             return result;
         }
 
@@ -215,7 +212,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.removeData(): ", result);
             return result;
         }
 
@@ -227,7 +223,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.readNode(): ", result);
             return result;
         }
 
@@ -239,7 +234,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("mem.readData(): ", result);
             return result;
         }
     }
@@ -247,7 +241,7 @@ class filo {
     static fs = class {
         static async mkDir(path) {
             const response = await fetch("/api/fs/createDir", {
-                method: "DELETE",
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -256,13 +250,12 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.mkDir(): ", result);
             return result;
         }
 
         static async lsDir(path) {
-            const response = await fetch("/api/fs/readDir", {
-                method: "GET",
+            const response = await fetch(`/api/fs/readDir`, {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -271,7 +264,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.lsDir(): ", result);
             return result;
         }
 
@@ -286,7 +278,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.rmDir(): ", result);
             return result;
         }
 
@@ -301,13 +292,12 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.createFile(): ", result);
             return result;
         }
 
         static async readFile(path) {
-            const response = await fetch("/api/fs/readFile", {
-                method: "GET",
+            const response = await fetch(`/api/fs/readFile`, {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -316,7 +306,6 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.readFile(): ", result);
             return result;
         }
 
@@ -331,7 +320,20 @@ class filo {
 
             const result = await response.json();
 
-            console.log("fs.rmFile(): ", result);
+            return result;
+        }
+
+        static async statFile(path) {
+            const response = await fetch("/api/fs/statFile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
             return result;
         }
     }
@@ -345,7 +347,6 @@ class filo {
                 throw new Error(`Error: ${response.status} ${response.statusText}`);
             }
 
-            console.log("sys.startService(): ", response);
             return response;
         }
 
@@ -357,7 +358,6 @@ class filo {
                 throw new Error(`Error: ${response.status} ${response.statusText}`);
             }
 
-            console.log("sys.stopService(): ", response);
             return response;
         }
     }
@@ -370,8 +370,6 @@ class filo {
             }
 
             const result = await response.json();
-
-            console.log("auth.getUser(): ", result.node[0]);
 
             return { email: result.node[0].email, token: result.node[0].token };
         }

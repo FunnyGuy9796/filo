@@ -15,9 +15,11 @@
         "better-sqlite3": "^11.1.2",
         "body-parser": "^1.20.2",
         "chalk": "^4.1.2",
+        "chardet": "^2.0.0",
         "ejs": "^3.1.10",
         "express": "^4.19.2",
         "firebase": "^10.12.5",
+        "iconv-lite": "^0.6.3",
         "memfs": "^4.11.1",
         "ws": "^8.18.0"
     }

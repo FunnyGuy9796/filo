@@ -146,17 +146,18 @@
 
             #taskbar-apps {
                 position: absolute;
-                left: 20px;
+                left: 40px;
                 width: 80%;
             }
 
             .taskbar-app {
-                display: block;
+                display: inline-block;
                 margin-top: 10px;
-                margin-left: 5px;
-                margin-right: 5px;
+                margin-left: 10px;
+                margin-right: 10px;
                 width: 50px;
                 height: 50px;
+                vertical-align: top;
             }
 
             .taskbar-app img {
@@ -254,15 +255,15 @@
             }
 
             #user-signin h2 {
-                padding-top: 60px;
+                padding-top: 40px;
             }
 
-            #user-profile {
+            #signin-profile {
                 display: block;
-                margin-top: 5%;
+                margin-top: 20px;
                 margin-left: auto;
                 margin-right: auto;
-                margin-bottom: 5%;
+                margin-bottom: 30px;
                 padding: 30px;
                 width: 10%;
                 height: auto;
@@ -276,7 +277,79 @@
                 margin-bottom: 20px;
             }
 
-            input[type=email], input[type=password] {
+            #user-signup {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 200%;
+                width: 60%;
+                height: 85%;
+                color: white;
+                background-color: #282828;
+                border-radius: 10px;
+                box-shadow: 
+                    0 -6px 8px rgba(0, 0, 0, 0.5),
+                    0 6px 8px rgba(0, 0, 0, 0.5),
+                    -6px 0 8px rgba(0, 0, 0, 0.5),
+                    6px 0 8px rgba(0, 0, 0, 0.5);
+                text-align: center;
+                font-size: 18px;
+                font-family: "Poppins-Medium";
+                line-height: 1;
+                user-select: none;
+                transition: opacity 0.3s;
+                opacity: 0;
+                z-index: 1000;
+            }
+
+            #hide-signup {
+                display: block;
+                margin-top: 15px;
+                margin-right: 15px;
+                padding: 5px;
+                width: 15px;
+                height: 15px;
+                border-radius: 10px;
+                float: right;
+                transition: 0.2s;
+            }
+
+            #hide-signup:hover {
+                background-color: #181818;
+            }
+
+            #hide-signup img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 80%;
+                height: auto;
+            }
+
+            #user-signup h2 {
+                padding-top: 40px;
+            }
+
+            #signup-profile {
+                display: block;
+                margin-top: 20px;
+                margin-left: auto;
+                margin-right: auto;
+                margin-bottom: 30px;
+                padding: 30px;
+                width: 10%;
+                height: auto;
+                background-color: black;
+                border-radius: 50%;
+            }
+
+            #user-signup label {
+                display: block;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+
+            input[type=text], input[type=email], input[type=password] {
                 width: 60%;
                 padding: 10px;
                 color: white;
@@ -287,14 +360,14 @@
                 font-size: 18px;
             }
 
-            input[type=email]:focus, input[type=password]:focus {
+            input[type=text], input[type=email]:focus, input[type=password]:focus {
                 outline: none;
             }
 
             button[type=submit] {
                 margin-top: 20px;
                 padding: 10px;
-                width: 80px;
+                width: 100px;
                 color: white;
                 background-color: black;
                 border: none;
@@ -306,6 +379,11 @@
 
             button[type=submit]:hover {
                 background-color: #005f9e;
+            }
+
+            #show-signup {
+                display: block;
+                margin-top: 20px;
             }
 
             .window {
@@ -435,15 +513,36 @@
                 <img src="/icons/close.svg">
             </a>
             <h2>Sign In</h2>
-            <img id="user-profile" src="/icons/profile.svg">
+            <img id="signin-profile" src="/icons/profile.svg">
             <form id="signin-form" action="/login" method="post">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="signin-email" name="email" required>
                 <br><br>
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="signin-password" name="password" required>
                 <br><br>
                 <button type="submit">Log In</button>
+            </form>
+            <a id="show-signup" onclick="showSignup()"><b>Create a free account</b></a>
+        </div>
+
+        <div id="user-signup">
+            <a id="hide-signup" onclick="hideSignup()">
+                <img src="/icons/close.svg">
+            </a>
+            <h2>Sign Up</h2>
+            <img id="signup-profile" src="/icons/profile.svg">
+            <form id="signup-form" action="/signup" method="post">
+                <label for="username">Username</label>
+                <input type="text" id="signup-username" name="username" required>
+                <br><br>
+                <label for="email">Email</label>
+                <input type="email" id="signup-email" name="email" required>
+                <br><br>
+                <label for="password">Password</label>
+                <input type="password" id="signup-password" name="password" required>
+                <br><br>
+                <button type="submit">Sign Up</button>
             </form>
         </div>
 
@@ -466,6 +565,8 @@
 
             const userSignin = document.getElementById("user-signin");
             const showSignin = document.getElementById("show-signin");
+
+            const userSignup = document.getElementById("user-signup");
 
             const tooltip = document.getElementById("tooltip");
 
@@ -866,6 +967,24 @@
                 function closeLogin() {
                     userSignin.style.top = 0;
                     userSignin.style.left = "200%";
+                }
+            }
+
+            function showSignup() {
+                hideLogin();
+
+                userSignup.style.top = "calc(8% - 40px)";
+                userSignup.style.left = "20%";
+                userSignup.style.opacity = 1;
+            }
+
+            function hideSignup() {
+                userSignup.style.opacity = 0;
+                userSignup.addEventListener("transitionend", closeSignup, { once: true });
+
+                function closeSignup() {
+                    userSignup.style.top = 0;
+                    userSignup.style.left = "200%";
                 }
             }
 

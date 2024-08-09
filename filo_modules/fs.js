@@ -2,6 +2,8 @@ const express = require('express');
 const chalk = require("chalk");
 const router = express.Router();
 
+const chardet = require('chardet');
+const iconv = require('iconv-lite');
 const { fs, vol } = require("memfs");
 const realFs = require("fs");
 const path = require("path");
@@ -9,8 +11,10 @@ const path = require("path");
 const snapshotFile = path.join(__dirname, "filesystem.json");
 
 const paths = [
-    "/trash",
-    "/appData",
+    "/.trash",
+    "/.appData",
+    "/usr",
+    "/usr/home",
     "/usr/home/Applications",
     "/usr/home/Desktop",
     "/usr/home/Documents",
@@ -37,7 +41,7 @@ router.post("/createDir", (req, res) => {
     }
 });
 
-router.get("/readDir", (req, res) => {
+router.post("/readDir", (req, res) => {
     const { path } = req.body;
 
     if (!path) {
@@ -116,7 +120,7 @@ router.post("/createFile", (req, res) => {
     }
 });
 
-router.get("/readFile", (req, res) => {
+router.post("/readFile", (req, res) => {
     const { path } = req.body;
 
     if (!path) {
@@ -126,12 +130,20 @@ router.get("/readFile", (req, res) => {
     const status = checkFile(path);
 
     if (status) {
-        const result = fs.readFileSync(path);
+        try {
+            const buffer = fs.readFileSync(path);
+            const detectEncoding = chardet.detect(buffer);
+            const content = iconv.decode(buffer, detectEncoding || "utf8");
 
-        res.status(201).json({
-            message: "success",
-            contents: result
-        });
+            res.status(201).json({
+                message: "success",
+                contents: content
+            });
+        } catch (error) {
+            res.status(500).json({
+                message: "failed to read file"
+            });
+        }
     } else {
         res.status(406).json({
             message: "the provided path is not a file"
@@ -167,6 +179,27 @@ router.delete("/rmFile", (req, res) => {
     }
 });
 
+router.post("/statFile", (req, res) => {
+    const { path } = req.body;
+
+    if (!path) {
+        return res.status(400).json({ message: "the provided input is invalid" });
+    }
+
+    try {
+        const result = fs.statSync(path);
+
+        res.status(201).json({
+            message: "success",
+            contents: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "failed to stat file"
+        });
+    }
+});
+
 function checkDir(path) {
     try {
         return fs.existsSync(path) && fs.lstatSync(path).isDirectory();
@@ -197,7 +230,7 @@ function checkFs(callback) {
 
         vol.fromJSON(snapshot);
 
-        const volStatus = !(Object.keys(snapshot).length === 0 || (Object.keys(snapshot).length === 1 && snapshot['/'] === null));
+        const volStatus = !(Object.keys(snapshot).length === 0);
 
         if (volStatus) {
             for (const path of paths) {
