@@ -3,14 +3,24 @@ const bodyParser = require('body-parser');
 const chalk = require("chalk");
 const app = express();
 
-const crypto = require("crypto");
+const argon2 = require("argon2");
 
-const filesystem = require("./filo_modules/fs");
+const firebase = require("firebase/compat/app");
+require('firebase/compat/database');
+
+const firebaseConfig = {
+    databaseURL: "https://filo-b61fa-default-rtdb.firebaseio.com/",
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+const fs = require("./filo_modules/fs");
 const network = require("./filo_modules/net");
 const memory = require("./filo_modules/mem");
 
 const os = require("os");
-const fs = require("fs");
+const realFs = require("fs");
 const path = require("path");
 const configFile= "./config.json";
 const servicesFile = "./services.json";
@@ -18,7 +28,7 @@ const servicesFile = "./services.json";
 let fsStatus = false;
 let memStatus = false;
 
-const data = fs.readFileSync(configFile, "utf8");
+const data = realFs.readFileSync(configFile, "utf8");
 const configData = JSON.parse(data);
 
 const netRequired = configData.network_required;
@@ -41,11 +51,76 @@ function waitForCondition(interval = 100) {
     });
 }
 
-function genToken(username, password) {
-    const data = username + password + crypto.randomBytes(16).toString("hex");
-    const token = crypto.createHash("sha256").update(data).digest("hex");
+async function hashPassword(password) {
+    try {
+        const hash = await argon2.hash(password);
 
-    return token;
+        return hash;
+    } catch(error) {
+        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + err);
+
+        return null;
+    }
+}
+
+async function verifyPassword(storedHash, password) {
+    try {
+        const isMatch = await argon2.verify(storedHash, password);
+
+        if (isMatch) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (err) {
+        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + err);
+
+        return false;
+    }
+}
+
+function setUser(username, email, token) {
+    const userRef = database.ref(`users/${username}`);
+
+    userRef.set({
+        email: email,
+        token: token
+    }, (error) => {
+        if (error) {
+            console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+            return false;
+        } else {
+            console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User account created successfully | {Username: ${username}, Email: ${email}}`);
+            return true;
+        }
+    });
+}
+
+async function getUser(email) {
+    const userRef = database.ref(`users`);
+
+    try {
+        const snapshot = await userRef.once("value");
+        let userData = null;
+
+        snapshot.forEach((userSnapshot) => {
+            const user = userSnapshot.val();
+            if (user.email === email) {
+                userData = { username: userSnapshot, ...user };
+                return true;
+            }
+        });
+
+        if (userData) {
+            return userData;
+        } else {
+            console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Could not find the specified account");
+            return null;
+        }
+    } catch(error) {
+        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+        return null;
+    }
 }
 
 async function stopService(serviceId) {
@@ -70,19 +145,17 @@ async function startService(serviceId) {
     if (!serviceExists) {
         const absPath = path.join(servicesPath, serviceId, "index.js");
 
-        if (fs.existsSync(absPath)) {
+        if (realFs.existsSync(absPath)) {
             const service = require(absPath);
             service.init();
 
-            const cols = [
-                { name: "id", type: "TEXT" }
-            ];
+            const cols = ["id"];
 
             const data = [
                 { id: serviceId }
             ];
 
-            memory.addData("services", cols.map(col => col.name), data);
+            memory.addData("services", cols, data);
 
             console.log(chalk.cyan.bold("[FILO/SERVICES]") + " -> Started system service | Service ID: " + serviceId);
         }
@@ -91,13 +164,13 @@ async function startService(serviceId) {
 
 async function startServices() {
     try {
-        const data = fs.readFileSync(servicesFile, "utf8");
+        const data = realFs.readFileSync(servicesFile, "utf8");
         const servicesData = JSON.parse(data);
 
         console.log(chalk.cyan.bold("[FILO/SERVICES]") + " -> Services.. [" + chalk.green.bold("OK") + "]");
 
         const cols = [
-            { name: "id", type: "TEXT" }
+            { name: "id", type: "TEXT", primary: true }
         ];
 
         memory.createNode("services", cols);
@@ -140,34 +213,34 @@ async function startServices() {
 function startApp(appId, uuid) {
     const absPath = path.join(appsPath, appId);
 
-    if (fs.existsSync(absPath)) {
+    if (realFs.existsSync(absPath)) {
         const appConfigFile = path.join(absPath, "appConfig.json");
-        const appData = fs.readFileSync(appConfigFile, "utf8");
+        const appData = realFs.readFileSync(appConfigFile, "utf8");
         const appConfigData = JSON.parse(appData);
 
+        const appName = appConfigData.name;
         const appIndexFile = appConfigData.index_file;
+        const appIconFile = appConfigData.icon_file;
 
-        const cols = [
-            { name: "id", type: "TEXT" }
-        ];
+        const cols = ["id", "name", "index_file", "icon_file"];
 
         const data = [
-            { id: appId + uuid }
+            { id: appId + uuid, name: appName, index_file: appIndexFile, icon_file: appIconFile }
         ];
 
-        memory.addData("applications", cols.map(col => col.name), data);
+        memory.addData("applications", cols, data);
 
         return (req, res) => {
             const appFilePath = path.join(absPath, appIndexFile);
             const ext = path.extname(appFilePath);
 
-            fs.access(appFilePath, fs.constants.F_OK, (err) => {
+            realFs.access(appFilePath, realFs.constants.F_OK, (err) => {
                 if (err) {
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Main file for app" + chalk.bold("[" + appId + "]") + " could not be found");
                     
                     res.status(404).send("app file not found");
                 } else {
-                    fs.readdir(absPath, (err, files) => {
+                    realFs.readdir(absPath, (err, files) => {
                         if (err) {
                             console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Other files for app" + chalk.bold("[" + appId + "]") + " could not be found");
                     
@@ -218,7 +291,10 @@ function startApp(appId, uuid) {
 
 function startAppsProcessor() {
     const cols = [
-        { name: "id", type: "TEXT" }
+        { name: "id", type: "TEXT", primary: true },
+        { name: "name", type: "TEXT" },
+        { name: "index_file", type: "TEXT"},
+        { name: "icon_file", type: "TEXT" }
     ];
 
     memory.createNode("applications", cols);
@@ -243,7 +319,7 @@ function startAppsProcessor() {
 
         const absPath = path.join(appsPath, appId);
         const appConfigFile = path.join(absPath, "appConfig.json");
-        const appData = fs.readFileSync(appConfigFile, "utf8");
+        const appData = realFs.readFileSync(appConfigFile, "utf8");
         const appConfigData = JSON.parse(appData);
 
         const appName = appConfigData.name;
@@ -253,7 +329,7 @@ function startAppsProcessor() {
         app.get("/app-info/" + appId + "/icon", (req, res) => {
             let iconFilePath = path.join(absPath, appIconFile);
 
-            fs.access(iconFilePath, fs.constants.F_OK, (err) => {
+            realFs.access(iconFilePath, realFs.constants.F_OK, (err) => {
                 if (err) {
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Icon file for app" + chalk.bold("[" + appId + "]") + " could not be found");
                     res.status(404).send("icon file not found");
@@ -289,11 +365,11 @@ async function boot() {
             startAppsProcessor();
 
             const columns = [
-                { name: "token", type: "TEXT" },
-                { name: "username", type: "TEXT" }
+                { name: "email", type: "TEXT", primary: true },
+                { name: "token", type: "TEXT" }
             ];
 
-            memory.createNode("tokens", columns);
+            memory.createNode("user", columns);
 
             app.use(express.static(path.join(__dirname, 'public')));
             app.set("view engine", "ejs");
@@ -305,27 +381,19 @@ async function boot() {
                 app.use(express.static(path.join(__dirname, 'public')));
                 app.set("views", path.join(__dirname, "views"));
 
-                let tokens = memory.readNode("tokens");
-                let auth = tokens.map(row => row.token);
-                auth = auth.join(", ");
-                let username = tokens.map(row => row.username);
-
-                if (auth != "") {
-                    console.log(auth);
-
-                }
-
                 res.render("desktop");
             });
 
             app.use("/api/mem", memory.router);
+
+            app.use("/api/fs", fs.router);
 
             app.get("/wallpaper", (req, res) => {
                 let rows = memory.readNode("wallpaper");
                 let wallpaperPath = rows.map(row => row.path);
                 wallpaperPath = wallpaperPath.join(", ");
 
-                fs.access(wallpaperPath, fs.constants.F_OK, (err) => {
+                realFs.access(wallpaperPath, realFs.constants.F_OK, (err) => {
                     if (err) {
                         console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("IMAGE NOT FOUND: ") + err);
                         res.status(404).send("Image not found");
@@ -336,24 +404,54 @@ async function boot() {
             });
 
             app.post("/login", (req, res) => {
-                const username = req.body.username;
+                const email = req.body.email;
                 const password = req.body.password;
 
-                const token = genToken(username, password);
+                /*
+                argon2.hash(password)
+                    .then(hash => {
+                        
+                    })
+                    .catch(error => {
+                        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT HASHED: ") + error);
+                        
+                        res.redirect("/");
+                    });
+                */
+                
+                getUser(email).then((userData) => {
+                    if (userData) {
+                        (async () => {
+                            let auth = await verifyPassword(userData.token, password);
 
-                const columns = [
-                    { name: "token", type: "TEXT" }
-                ];
-            
-                const tokenData = [
-                    { token: token }
-                ];
+                            if (auth == true) {
+                                const cols = ["email", "token"];
+                        
+                                const data = [
+                                    { email: userData.email, token: userData.token},
+                                ];
 
-                memory.addData("tokens", columns.map(col => col.name), tokenData);
+                                memory.addData("user", cols, data);
 
-                console.log(chalk.cyan.bold("[FILO/USER]") + " -> Signed in as " + chalk.bold(username));
+                                console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User logged in successfully as ` + chalk.bold(userData.email));
 
-                res.redirect("/");
+                                res.status(201).json({
+                                    message: "success"
+                                });
+                            } else {
+                                console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("FAILED TO AUTHENTICATE USER"));
+                                res.status(401).json({
+                                    message: "failed"
+                                });
+                            }
+                        })();
+                    } else {
+                        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT FOUND"));
+                        res.status(404).json({
+                            message: "failed"
+                        });
+                    }
+                });
             });
 
             app.listen(PORT, () => {
@@ -390,7 +488,12 @@ async function boot() {
 function cleanup() {
     console.log(chalk.cyan.bold("[FILO]") + " -> Cleaning up before shutting down..");
 
+    fs.saveFs((status, message) => {
+        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. " + message);
+    });
+
     memory.db.close();
+    console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Cleaning up memory.. [" + chalk.green.bold("DONE") + ']');
 }
 
 process.on('SIGINT', () => {
@@ -429,20 +532,17 @@ console.log(chalk.cyan.bold("[FILO]") + " -> Booting system..");
 
 console.log(chalk.cyan.bold("[FILO]") + " -> Checking system modules..");
 
-filesystem.checkFs((status, message) => {
+fs.checkFs((status, message) => {
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Filesystem.. " + message);
 
-    if (status) {
-        fsStatus = true;
-    }
+    fsStatus = status;
 });
 
 network.checkNet("http://www.example.com", netRequired, (connected, message) => {
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Network.. " + message);
 
-    if (connected) {
-        netStatus = true;
-    } else {
+    netStatus = connected;
+    if (!connected) {
         console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> " + chalk.red.bold("Network") + " | A network connection is required for certain components of Filo to function");
     }
 });
@@ -450,9 +550,7 @@ network.checkNet("http://www.example.com", netRequired, (connected, message) => 
 memory.checkMem((status, message) => {
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Memory.. " + message);
 
-    if (status) {
-        memStatus = true;
-    }
+    memStatus = status;
 });
 
 boot();

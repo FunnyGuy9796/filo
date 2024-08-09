@@ -6,14 +6,21 @@ const database = require("better-sqlite3");
 const db = new database(":memory:");
 
 function createNode(name, cols) {
-    const colDefs = cols.map(col => `${col.name} ${col.type}`).join(', ');
-    const createTableQuery = `CREATE TABLE IF NOT EXISTS ${name} (${colDefs})`;
+    const colDefs = cols.map(col => {
+        let colDef = `${col.name} ${col.type}`;
+        if (col.primary) {
+            colDef += " PRIMARY KEY";
+        }
+        return colDef;
+    }).join(', ');
 
+    const createTableQuery = `CREATE TABLE IF NOT EXISTS ${name} (${colDefs})`;
     db.exec(createTableQuery);
 }
 
-router.post("/createNode/:name/:cols", (req, res) => {
-    const { name, cols } = req.params;
+router.post("/createNode/:name", (req, res) => {
+    const { name } = req.params;
+    const { cols } = req.body;
 
     createNode(name, cols);
 
@@ -23,19 +30,27 @@ router.post("/createNode/:name/:cols", (req, res) => {
 });
 
 function addData(name, cols, data) {
+    if (data.length === 0) return;
+
     const colNames = cols.join(', ');
     const placeholders = cols.map(() => '?').join(', ');
-    const insertQuery = `INSERT OR REPLACE INTO ${name} (${colNames}) VALUES (${placeholders})`;
+    const insertQuery = `INSERT INTO ${name} (${colNames}) VALUES (${placeholders})`;
     const insertStmt = db.prepare(insertQuery);
 
     data.forEach(row => {
-        const values = cols.map(col => row[col]);
-        insertStmt.run(...values);
+        const values = cols.map(col => (row[col] !== undefined ? row[col] : null));
+
+        try {
+            insertStmt.run(...values);
+        } catch(error) {
+            console.log(chalk.cyan.bold("[FILO/MEMORY") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("ERROR ADDING DATA: ") + error);
+        }
     });
 }
 
-router.put("/addData/:name/:cols/:data", (req, res) => {
-    const { name, cols, data } = req.params;
+router.put("/addData/:name", (req, res) => {
+    const { name } = req.params;
+    const { cols, data } = req.body;
 
     addData(name, cols, data);
 
@@ -60,20 +75,33 @@ router.delete("/deleteNode/:name", (req, res) => {
     });
 });
 
-function removeData(name, condition) {
-    const deleteDataQuery = `DELETE FROM ${name} WHERE ${condition}`;
+function removeData(name, column, value) {
+    const deleteDataQuery = `DELETE FROM ${name} WHERE ${column} = ?`;
     const stmt = db.prepare(deleteDataQuery);
-    const result = stmt.run();
+
+    try {
+        const result = stmt.run(value);
+        return true;
+    } catch(error) {
+        console.log(chalk.cyan.bold("[FILO/MEMORY") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("ERROR REMOVING DATA: ") + error);
+        return false;
+    }
 }
 
 router.put("/removeData/:name/:condition", (req, res) => {
     const { name, condition } = req.params;
 
-    removeData(name, condition);
+    let status = removeData(name, condition);
 
-    res.status(201).json({
-        message: "success"
-    });
+    if (status == true) {
+        res.status(201).json({
+            message: "success"
+        });
+    } else {
+        res.status(201).json({
+            message: "error"
+        });
+    }
 });
 
 function readNode(name) {
@@ -95,17 +123,25 @@ router.get("/readNode/:name", (req, res) => {
     });
 });
 
-function readData(name, condition) {
-    const readQuery = `SELECT * FROM ${name} WHERE ${condition}`;
+function readData(name, column, value) {
+    const readQuery = `SELECT * FROM ${name} WHERE ${column} = ?`;
     const stmt = db.prepare(readQuery);
-    const rows = stmt.all();
-    return rows;
+    
+    try {
+        const result = stmt.all(value);
+        return result;
+    } catch(error) {
+        console.log(chalk.cyan.bold("[FILO/MEMORY") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("ERROR READING DATA: ") + error);
+        return [];
+    }
 }
 
-router.get("/readData/:name/:condition", (req, res) => {
-    const { name, condition } = req.params;
+router.get("/readData/:name/:column/:value", (req, res) => {
+    const { name, column, value } = req.params;
 
-    const result = readData(name, condition);
+    const decodedValue = decodeURIComponent(value);
+
+    const result = readData(name, column, decodedValue);
 
     res.status(201).json({
         message: "success",

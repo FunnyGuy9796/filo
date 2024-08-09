@@ -169,12 +169,12 @@
                 position: absolute;
                 top: 8px;
                 right: 250px;
-                width: 50px;
-                height: 50px;
+                width: 30px;
+                height: 30px;
             }
 
             #show-signin img {
-                width: 60%;
+                width: 100%;
                 height: auto;
                 padding: 5px;
                 background-color: black;
@@ -276,7 +276,7 @@
                 margin-bottom: 20px;
             }
 
-            input[type=text], input[type=password] {
+            input[type=email], input[type=password] {
                 width: 60%;
                 padding: 10px;
                 color: white;
@@ -287,7 +287,7 @@
                 font-size: 18px;
             }
 
-            input[type=text]:focus, input[type=password]:focus {
+            input[type=email]:focus, input[type=password]:focus {
                 outline: none;
             }
 
@@ -296,11 +296,16 @@
                 padding: 10px;
                 width: 80px;
                 color: white;
-                background-color: #181818;
+                background-color: black;
                 border: none;
                 border-radius: 10px;
                 font-size: 18px;
                 font-family: "Poppins";
+                transition: 0.2s;
+            }
+
+            button[type=submit]:hover {
+                background-color: #005f9e;
             }
 
             .window {
@@ -431,9 +436,9 @@
             </a>
             <h2>Sign In</h2>
             <img id="user-profile" src="/icons/profile.svg">
-            <form action="/login" method="post">
-                <label for="username">Email</label>
-                <input type="text" id="username" name="username" required>
+            <form id="signin-form" action="/login" method="post">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
                 <br><br>
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
@@ -779,12 +784,14 @@
                 }
             });
 
-            window.addTooltip = function(object, x, y, text) {
+            window.addTooltip = function(object, text) {
                 object.onmouseenter = function() {
+                    const objRect = object.getBoundingClientRect();
+
                     tooltip.style.opacity = 1;
                     tooltip.innerText = text;
-                    tooltip.style.left = x + "px";
-                    tooltip.style.top = y + "px";
+                    tooltip.style.left = objRect.left + (objRect.width / 2) + "px";
+                    tooltip.style.top = objRect.top - 50 + "px";
                 }
 
                 object.onmouseleave = function() {
@@ -838,7 +845,7 @@
                             .then(data => {
                                 console.log("App Info: ", data);
                                 const appRect = taskbarApp.getBoundingClientRect();
-                                addTooltip(taskbarApp, appRect.left + (appRect.width / 2), appRect.top - 50, data.appName);
+                                addTooltip(taskbarApp, data.appName);
                             })
                             .catch(error => console.error("Error: ", error));
                     }
@@ -906,11 +913,38 @@
             
             setInterval(updateTime, 1000);
 
-            window.onload = function() {
+            document.addEventListener("DOMContentLoaded", () => {
                 updateTaskbar();
+
                 const showSigninRect = showSignin.getBoundingClientRect();
-                addTooltip(showSignin, showSigninRect.left + (showSigninRect.width / 2), showSigninRect.top - 50, "Sign In");
-            };
+                addTooltip(showSignin, "Sign In");
+
+                document.getElementById("signin-form").addEventListener("submit", async (event) => {
+                    event.preventDefault();
+
+
+
+                    const formData = new FormData(event.target);
+
+                    try {
+                        const response = await fetch("/login", {
+                            method: "POST",
+                            body: new URLSearchParams(formData),
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'  // Ensure correct Content-Type
+                            }
+                        });
+
+                        if (response.ok) {
+                            hideLogin();
+                        } else {
+                            console.error("User Signin: Form submission failed: ", response.statusText);
+                        }
+                    } catch (error) {
+                        console.error("Error occured: ", error);
+                    }
+                });
+            });
 
             window.addEventListener("resize", function() {
                 viewW = window.innerWidth;

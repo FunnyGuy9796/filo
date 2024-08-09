@@ -94,6 +94,65 @@ class filo {
             });
         }
 
+        static showLoadingScreen(object) {
+            const loadingScreen = document.createElement("div");
+            loadingScreen.style.display = "flex";
+            loadingScreen.style.position = "fixed";
+            loadingScreen.style.top = 0;
+            loadingScreen.style.left = 0;
+            loadingScreen.style.width = "100%";
+            loadingScreen.style.height = "100%";
+            loadingScreen.style.backgroundColor = "#282828";
+            loadingScreen.style.zIndex = 1000;
+            loadingScreen.style.alignItems = "center";
+            loadingScreen.style.justifyContent = "center";
+
+            const loadingStyle = document.createElement("style");
+            loadingStyle.innerHTML = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+
+            document.head.appendChild(loadingStyle);
+
+            const loadingSpinner = document.createElement("div");
+            loadingSpinner.style.display = "block";
+            loadingSpinner.style.width = "200px";
+            loadingSpinner.style.height = "200px";
+            loadingSpinner.style.border = "16px solid #181818";
+            loadingSpinner.style.borderRadius = "50%";
+            loadingSpinner.style.borderTop = "16px solid #005f9e";
+            loadingSpinner.style.webkitAnimation = "spin 2s linear infinite";
+            loadingScreen.style.transition = "0.2s";
+
+            loadingScreen.appendChild(loadingSpinner);
+
+            object.appendChild(loadingScreen);
+
+            return { screen: loadingScreen, style: loadingStyle };
+        }
+
+        static hideLoadingScreen(loadingScreen, loadingStyle) {
+            loadingScreen.style.opacity = 0;
+
+            const handleTransitionEnd = () => {
+                loadingScreen.remove();
+                loadingStyle.remove();
+                loadingScreen.removeEventListener("transitionend", handleTransitionEnd);
+            };
+    
+            loadingScreen.addEventListener("transitionend", handleTransitionEnd);
+
+            setTimeout(() => {
+                if (loadingScreen.parentNode) {
+                    loadingScreen.remove();
+                    loadingStyle.remove();
+                }
+            }, 200);
+        }
+
         static exit() {
             if (window.parent && typeof window.parent.stopApp === "function") {
                 window.parent.stopApp(window.location.pathname.split("/")[2], window.location.pathname.split("/")[3]);
@@ -108,6 +167,9 @@ class filo {
             const response = await fetch("/api/mem/createNode/" + name + "/" + JSON.stringify(cols), {
                 method: "POST"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             const result = await response.json();
 
@@ -119,6 +181,9 @@ class filo {
             const response = await fetch("/api/mem/addData/" + name + "/" + JSON.stringify(cols) + "/" + JSON.stringify(data), {
                 method: "PUT"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             const result = await response.json();
 
@@ -130,6 +195,9 @@ class filo {
             const response = await fetch("/api/mem/deleteNode/" + name, {
                 method: "DELETE"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             const result = await response.json();
 
@@ -141,6 +209,9 @@ class filo {
             const response = await fetch("/api/mem/removeData/" + name + "/" + condition, {
                 method: "PUT"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             const result = await response.json();
 
@@ -149,18 +220,118 @@ class filo {
         }
 
         static async readNode(name) {
-            const response = await fetch("/api/mem/readNode/" + name);
+            const response = await fetch(`/api/mem/readNode/${name}`);
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+
             const result = await response.json();
 
             console.log("mem.readNode(): ", result);
             return result;
         }
 
-        static async readData(name, condition) {
-            const response = await fetch("/api/mem/readData/" + name + "/" + condition);
+        static async readData(name, column, value) {
+            const response = await fetch(`/api/mem/readData/${name}/${column}/${value}`);
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+
             const result = await response.json();
 
             console.log("mem.readData(): ", result);
+            return result;
+        }
+    }
+
+    static fs = class {
+        static async mkDir(path) {
+            const response = await fetch("/api/fs/createDir", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.mkDir(): ", result);
+            return result;
+        }
+
+        static async lsDir(path) {
+            const response = await fetch("/api/fs/readDir", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.lsDir(): ", result);
+            return result;
+        }
+
+        static async rmDir(path) {
+            const response = await fetch("/api/fs/rmDir", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.rmDir(): ", result);
+            return result;
+        }
+
+        static async createFile(path, content, type) {
+            const response = await fetch("/api/fs/createFile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path, content, type }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.createFile(): ", result);
+            return result;
+        }
+
+        static async readFile(path) {
+            const response = await fetch("/api/fs/readFile", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.readFile(): ", result);
+            return result;
+        }
+
+        static async rmFile(path) {
+            const response = await fetch("/api/fs/rmFile", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ path }),
+            });
+
+            const result = await response.json();
+
+            console.log("fs.rmFile(): ", result);
             return result;
         }
     }
@@ -170,6 +341,9 @@ class filo {
             const response = await fetch("/start-service/" + id, {
                 method: "POST"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             console.log("sys.startService(): ", response);
             return response;
@@ -179,9 +353,60 @@ class filo {
             const response = await fetch("/stop-service/" + id, {
                 method: "POST"
             });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
 
             console.log("sys.stopService(): ", response);
             return response;
+        }
+    }
+
+    static auth = class {
+        static async getUser() {
+            const response = await fetch("/api/mem/readNode/user");
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            console.log("auth.getUser(): ", result.node[0]);
+
+            return { email: result.node[0].email, token: result.node[0].token };
+        }
+
+        static async isSignedIn() {
+            const response = await fetch("/api/mem/readNode/user");
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            return result.node[0] !== undefined;
+        }
+
+        static async signIn() {
+            if (window.parent && typeof window.parent.showLogin === "function") {
+                window.parent.showLogin();
+
+                return new Promise(async (resolve, reject) => {
+                    try {
+                        const status = await filo.isSignedIn();
+
+                        if (status) {
+                            resolve({ status: true });
+                        } else {
+                            reject({ status: false });
+                        }
+                    } catch (error) {
+                        reject({ status: false, error: error });
+                    }
+                });
+            } else {
+                console.error("showLogin(): Parent function is not available");
+            }
         }
     }
 }
