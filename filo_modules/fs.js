@@ -13,9 +13,10 @@ const snapshotFile = path.join(__dirname, "filesystem.json");
 const paths = [
     "/.trash",
     "/.appData",
+    "/sys",
+    "/sys/apps",
     "/usr",
     "/usr/home",
-    "/usr/home/Applications",
     "/usr/home/Desktop",
     "/usr/home/Documents",
     "/usr/home/Downloads",
@@ -226,22 +227,20 @@ function saveFs(callback) {
 
 function checkFs(callback) {
     if (realFs.existsSync(snapshotFile)) {
-        const snapshot = JSON.parse(realFs.readFileSync(snapshotFile, "utf8"));
+        try {
+            const snapshot = JSON.parse(realFs.readFileSync(snapshotFile, "utf8"));
 
-        vol.fromJSON(snapshot);
+            vol.fromJSON(snapshot);
 
-        const volStatus = !(Object.keys(snapshot).length === 0);
-
-        if (volStatus) {
-            for (const path of paths) {
+            paths.forEach(path => {
                 if (!checkDir(path)) {
                     fs.mkdirSync(path);
                 }
-            }
+            });
 
             callback(true, '[' + chalk.green.bold("OK") + ']');
-        } else {
-            callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ' Unable to create virtual filesystem]');
+        } catch (error) {
+            callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ` ${error}]`);
         }
     } else {
         callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ' Unable to locate filesystem.json]');
@@ -252,6 +251,8 @@ module.exports = {
     router,
     fs,
     vol,
+    checkDir,
+    checkFile,
     saveFs,
     checkFs
 };

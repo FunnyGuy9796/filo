@@ -21,6 +21,7 @@ const memory = require("./filo_modules/mem");
 
 const os = require("os");
 const realFs = require("fs");
+const fsExtra = require("fs-extra");
 const path = require("path");
 const configFile= "./config.json";
 const servicesFile = "./services.json";
@@ -210,6 +211,103 @@ async function startServices() {
     }
 }
 
+async function copyDirToVfs(sourceDir, virtualRoot) {
+
+    // Function to recursively copy files and directories
+    async function copyRecursive(src, dest) {
+        const items = await fsExtra.readdir(src);
+        for (const item of items) {
+            const srcPath = path.join(src, item);
+            const destPath = path.join(dest, item);
+            const stats = await fsExtra.stat(srcPath);
+
+            if (stats.isDirectory()) {
+                fs.vol.mkdirSync(destPath);
+                await copyRecursive(srcPath, destPath);
+            } else if (stats.isFile()) {
+                const data = await fsExtra.readFile(srcPath);
+                fs.vol.writeFileSync(destPath, data);
+            }
+        }
+    }
+
+    // Start copying from the source directory to the virtual root
+    await copyRecursive(sourceDir, virtualRoot);
+}
+
+async function genRoutes(res, appId, appIndexFile) {
+    console.log(`appId: ${appId}, appIndexFile: ${appIndexFile}`);
+    const appPath = path.join("/sys/apps", appId);
+    const appFilePath = path.join(appPath, appIndexFile);
+    console.log(`appFilePath: ${path.resolve(appFilePath)}`);
+    const ext = path.extname(appFilePath);
+    const status = fs.checkFile(appFilePath);
+
+    app.engine('ejs', (filePath, options, callback) => {
+        console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + ` -> Rendering file at: ${filePath}`);
+        
+        fs.vol.readFileSync(filePath, 'utf8', (err, data) => {
+            if (err) {
+                console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed to read file for app" + chalk.bold("[" + appId + "]") + `at: ${filePath}`, err);
+
+                return callback(err);
+            }
+            try {
+                console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + ` -> File read successfully: ${filePath}`);
+
+                const rendered = ejs.render(data, options);
+                callback(null, rendered);
+            } catch (err) {
+                console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed to render file for app" + chalk.bold("[" + appId + "]") + `at: ${filePath}`, err);
+
+                callback(err);
+            }
+        });
+    });
+
+    app.set("view engine", "ejs");
+
+    if (status) {
+        app.set("views", appPath);
+
+        const files = fs.vol.readdirSync(appPath);
+        
+        files.forEach(file => {
+            const filePath = path.join(appPath, file);
+            const extname = path.extname(filePath);
+            const fileName = path.basename(file, extname);
+
+            if (extname === ".ejs") {
+                let routePath = `/${appId}/${fileName}`;
+                if (file === appIndexFile) {
+                    routePath = `/${appId}`;
+                }
+                app.get(routePath, (req, res) => {
+                    res.render(fileName);
+                });
+            }
+        });
+
+        if (ext === ".ejs") {
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Started application | App: " + appId);
+
+            app.use(`/${appId}`, express.static(appPath));
+
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + ` -> Views directory set to: ${app.get("views")}`);
+
+            return res.render(path.basename(appFilePath, ext));
+        } else {
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Main file for app" + chalk.bold("[" + appId + "]") + " is invalid | Must be .ejs or .pug");
+            
+            return res.sendFile(path.basename(appFilePath, ext));
+        }
+    } else {
+        console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Main file for app" + chalk.bold("[" + appId + "]") + " could not be found");
+            
+        return res.status(404).send("app file not found");
+    }
+}
+
 function startApp(appId, uuid) {
     const absPath = path.join(appsPath, appId);
 
@@ -222,6 +320,22 @@ function startApp(appId, uuid) {
         const appIndexFile = appConfigData.index_file;
         const appIconFile = appConfigData.icon_file;
 
+        const vFilePath = "/sys/apps/" + appId;
+
+        const status = fs.checkDir(vFilePath);
+
+        if (!status) {
+            fs.fs.mkdirSync(vFilePath);
+
+            (async () => {
+                try {
+                    await copyDirToVfs(absPath, vFilePath);
+                } catch(error) {
+                    console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed copying directory for app" + chalk.bold("[" + appId + "]") + " to virtual filesystem");
+                }
+            })();
+        }
+
         const cols = ["id", "name", "index_file", "icon_file"];
 
         const data = [
@@ -231,56 +345,9 @@ function startApp(appId, uuid) {
         memory.addData("applications", cols, data);
 
         return (req, res) => {
-            const appFilePath = path.join(absPath, appIndexFile);
-            const ext = path.extname(appFilePath);
-
-            realFs.access(appFilePath, realFs.constants.F_OK, (err) => {
-                if (err) {
-                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Main file for app" + chalk.bold("[" + appId + "]") + " could not be found");
-                    
-                    res.status(404).send("app file not found");
-                } else {
-                    realFs.readdir(absPath, (err, files) => {
-                        if (err) {
-                            console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Other files for app" + chalk.bold("[" + appId + "]") + " could not be found");
-                    
-                            res.status(404).send("unable to find app files");
-                        }
-
-                        files.forEach(file => {
-                            const filePath = path.join(absPath, file);
-                            const extname = path.extname(filePath);
-            
-                            if (extname === ".ejs") {
-                                if (file == appIndexFile) {
-                                    const routePath = "/" + appId;
-                                    app.get(routePath, (req, res) => {
-                                        res.render(path.basename(file, extname));
-                                    });
-                                } else {
-                                    const routePath = "/" + appId + "/" + path.basename(file, extname);
-                                    app.get(routePath, (req, res) => {
-                                        res.render(path.basename(file, extname));
-                                    });
-                                }
-                            }
-                        });
-                    });
-
-                    if (ext === ".ejs") {
-                        app.use("/" + appId, express.static(absPath));
-                        app.set("views", absPath);
-
-                        console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Started application | App: " + appId);
-
-                        res.render(path.basename(appFilePath, ext));
-                    } else {
-                        console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Main file for app" + chalk.bold("[" + appId + "]") + " is invalid | Must be .ejs or .pug");
-                        
-                        res.sendFile(appFilePath);
-                    }
-                }
-            });
+            (async () => {
+                await genRoutes(res, appId, appIndexFile);
+            })();
         };
     } else {
         console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> App with ID " + chalk.bold("[" + appId + "]") + " could not be found");
@@ -317,9 +384,16 @@ function startAppsProcessor() {
     app.get("/app-info/:appId", (req, res) => {
         const { appId } = req.params;
 
-        const absPath = path.join(appsPath, appId);
+        const absPath = path.join("/sys/apps", appId);
         const appConfigFile = path.join(absPath, "appConfig.json");
-        const appData = realFs.readFileSync(appConfigFile, "utf8");
+        let appData;
+        try {
+            appData = fs.vol.readFileSync(appConfigFile, "utf8");
+        } catch (error) {
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Config file for app" + chalk.bold("[" + appId + "]") + " could not be found");
+            return res.status(404).send("App config file not found");
+        }
+
         const appConfigData = JSON.parse(appData);
 
         const appName = appConfigData.name;
@@ -329,14 +403,15 @@ function startAppsProcessor() {
         app.get("/app-info/" + appId + "/icon", (req, res) => {
             let iconFilePath = path.join(absPath, appIconFile);
 
-            realFs.access(iconFilePath, realFs.constants.F_OK, (err) => {
-                if (err) {
-                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Icon file for app" + chalk.bold("[" + appId + "]") + " could not be found");
-                    res.status(404).send("icon file not found");
-                } else {
-                    res.sendFile(iconFilePath);
-                }
-            });
+            try {
+                fs.vol.statSync(iconFilePath);
+                const iconFileData = fs.vol.readFileSync(iconFilePath);
+                res.contentType(path.extname(iconFilePath) || "application/octet-stream");
+                res.send(iconFileData);
+            } catch(error) {
+                console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Icon file for app" + chalk.bold("[" + appId + "]") + " could not be found");
+                return res.status(404).send("App icon file not found");
+            }
         });
 
         const appInfo = {
