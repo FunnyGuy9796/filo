@@ -129,13 +129,19 @@ async function stopService(serviceId) {
     const resolvedPath = require.resolve(path.join(servicesPath, serviceId, "main.js"));
 
     if (require.cache[resolvedPath]) {
-        const result = await require(resolvedPath).stop();
+        try {
+            const serviceModule = require(resolvedPath);
 
-        if (result) {
-            memory.removeData("services", "id = '" + serviceId + "'");
-            delete require.cache[resolvedPath];
+            const result = await serviceModule.stop();
 
-            console.log(chalk.cyan.bold("[FILO/SERVICES]") + " -> Stopped system service | Service ID: " + serviceId);
+            if (result) {
+                memory.removeData("services", "id = '" + serviceId + "'");
+                delete require.cache[resolvedPath];
+    
+                console.log(chalk.cyan.bold("[FILO/SERVICES]") + " -> Stopped system service | Service ID: " + serviceId);
+            }
+        } catch (error) {
+            console.log(chalk.cyan.bold("[FILO/SERVICES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
         }
     }
 }
@@ -568,18 +574,22 @@ async function boot() {
             process.exit(1);
         }
     } catch (error) {
-        console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+        console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
 
         cleanup();
         process.exit(1);
     }
 }
 
-function cleanup() {
+async function cleanup() {
     console.log(chalk.cyan.bold("[FILO]") + " -> Cleaning up before shutting down..");
 
-    fs.saveFs((status, message) => {
+    fs.saveFs((status, message, error) => {
         console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. " + message);
+
+        if (!status) {
+            console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+        }
     });
 
     memory.db.close();

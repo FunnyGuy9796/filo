@@ -24,6 +24,9 @@ function init() {
 }
 
 function stop() {
+    const taskbarNode = memory.readNode("taskbar");
+    console.log(`taskbarNode: ${taskbarNode}`);
+
     memory.deleteNode("taskbar");
 
     return true;

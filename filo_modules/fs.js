@@ -220,9 +220,13 @@ function checkFile(path) {
 function saveFs(callback) {
     const snapshot = vol.toJSON();
     
-    realFs.writeFileSync(snapshotFile, JSON.stringify(snapshot, null, 2));
+    try {
+        realFs.writeFileSync(snapshotFile, JSON.stringify(snapshot, null, 2));
 
-    callback(true, "[" + chalk.green.bold("DONE") + "]");
+        callback(true, "[" + chalk.green.bold("DONE") + "]");
+    } catch (error) {
+        callback(false, "[" + chalk.red.bold("FAILED") + "]", error);
+    }
 }
 
 function checkFs(callback) {
