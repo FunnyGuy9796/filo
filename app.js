@@ -224,8 +224,12 @@ function copyDirToVfs(sourceDir, virtualRoot) {
         if (entry.isDirectory()) {
             copyDirToVfs(srcPath, destPath);
         } else if (entry.isFile()) {
-            const data = realFs.readFileSync(srcPath);
-            fs.vol.writeFileSync(destPath, data);
+            try {
+                const data = realFs.readFileSync(srcPath);
+                fs.vol.writeFileSync(destPath, data);
+            } catch (error) {
+                console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Error installing one or more files:" + error);
+            }
         }
     }
 }
@@ -461,6 +465,7 @@ async function boot() {
                     const fileData = fs.vol.readFileSync(filePath);
         
                     res.contentType(path.extname(filePath) || "application/octet-stream");
+                    res.setHeader('Access-Control-Allow-Origin', '*');
                     res.send(fileData);
                 } catch(error) {
                     console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File not found at the path specified");
