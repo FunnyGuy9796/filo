@@ -1,0 +1,14 @@
+{
+                "/.trash",
+                "/.appData",
+                "/sys",
+                "/sys/apps",
+                "/usr",
+                "/usr/home",
+                "/usr/home/Desktop",
+                "/usr/home/Documents",
+                "/usr/home/Downloads",
+                "/usr/home/Music",
+                "/usr/home/Pictures",
+                "/usr/home/Videos"
+            }

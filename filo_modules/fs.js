@@ -242,8 +242,6 @@ function checkFs(callback) {
         } catch (error) {
             callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ` ${error}]`);
         }
-    } else {
-        callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ' Unable to locate filesystem.json]');
     }
 }
 
