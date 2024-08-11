@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const chalk = require("chalk");
 const app = express();
 
+const mime = require("mime-types");
 const argon2 = require("argon2");
 
 const firebase = require("firebase/compat/app");
@@ -84,17 +85,19 @@ async function verifyPassword(storedHash, password) {
 function setUser(username, email, token) {
     const userRef = database.ref(`users/${username}`);
 
-    userRef.set({
-        email: email,
-        token: token
-    }, (error) => {
-        if (error) {
-            console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
-            return false;
-        } else {
-            console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User account created successfully | {Username: ${username}, Email: ${email}}`);
-            return true;
-        }
+    return new Promise((resolve, reject) => {
+        userRef.set({
+            email: email,
+            token: token
+        }, (error) => {
+            if (error) {
+                console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+                reject(error);
+            } else {
+                console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User account created successfully | {Username: ${username}, Email: ${email}}`);
+                resolve(true);
+            }
+        });
     });
 }
 
@@ -233,6 +236,11 @@ function copyDirToVfs(sourceDir, virtualRoot) {
             try {
                 const data = realFs.readFileSync(srcPath);
                 fs.vol.writeFileSync(destPath, data);
+                const newData = fs.vol.readFileSync(destPath);
+
+                if (Buffer.compare(data, newData) !== 0) {
+                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File data has become corrupted");
+                }
             } catch (error) {
                 console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Error installing one or more files:" + error);
             }
@@ -301,7 +309,7 @@ function genRoutes(res, appId, appIndexFile) {
     }
 }
 
-function installApp(appId) {
+async function installApp(appId) {
     const absPath = path.join(appsPath, appId);
 
     if (realFs.existsSync(absPath)) {
@@ -316,12 +324,16 @@ function installApp(appId) {
                 
                 try {
                     const appData = fs.vol.readFileSync(path.join(vFilePath, "appConfig.json"), "utf8");
+
+                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Installing" + chalk.bold("[" + appId + "]") + ".. [" + chalk.green.bold("DONE") + "]");
                 } catch (error) {
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Config file for app" + chalk.bold("[" + appId + "]") + " could not be found: " + error);
                 }
             } catch(error) {
                 console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold("[" + appId + "]") + " onto virtual filesystem: " + error);
             }
+        } else {
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> app" + chalk.bold("[" + appId + "]") + " already installed");
         }
     }
 }
@@ -352,8 +364,15 @@ function startAppsProcessor(callback) {
         "file_explorer"
     ];
 
-    installApp("about"); 
-    installApp("file_explorer");
+    for (let i = 0; i < defaultApps.length; i++) {
+        (async () => {
+            try {
+                await installApp(defaultApps[i]);
+            } catch(error) {
+                console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold(`[${defaultApps[i]}]`) + ": " + error);
+            }
+        })();
+    }
     
     const cols = [
         { name: "id", type: "TEXT", primary: true },
@@ -469,9 +488,9 @@ async function boot() {
                     fs.vol.statSync(filePath);
         
                     const fileData = fs.vol.readFileSync(filePath);
-        
-                    res.contentType(path.extname(filePath) || "application/octet-stream");
-                    res.setHeader('Access-Control-Allow-Origin', '*');
+
+                    const mimeType = mime.contentType(path.extname(filePath)) || 'application/octet-stream';
+                    res.setHeader('Content-Type', mimeType);
                     res.send(fileData);
                 } catch(error) {
                     console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File not found at the path specified");
@@ -502,18 +521,6 @@ async function boot() {
             app.post("/login", (req, res) => {
                 const email = req.body.email;
                 const password = req.body.password;
-
-                /*
-                argon2.hash(password)
-                    .then(hash => {
-                        
-                    })
-                    .catch(error => {
-                        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT HASHED: ") + error);
-                        
-                        res.redirect("/");
-                    });
-                */
                 
                 getUser(email).then((userData) => {
                     if (userData) {
@@ -549,6 +556,42 @@ async function boot() {
                     }
                 });
             });
+
+            app.post("/signup", async (req, res) => {
+                const username = req.body.username;
+                const email = req.body.email;
+                const password = req.body.password;
+            
+                try {
+                    const hash = await argon2.hash(password);
+                    const status = await setUser(username, email, hash);
+                    
+                    if (status) {
+                        const userData = await getUser(email);
+                        
+                        if (userData) {
+                            const cols = ["email", "token"];
+                            const data = [{ email: email, token: hash }];
+                            
+                            memory.addData("user", cols, data);
+                            
+                            console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User logged in successfully as ` + chalk.bold(email));
+                            
+                            res.status(201).json({ message: "success" });
+                        } else {
+                            console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT FOUND"));
+                            res.status(404).json({ message: "failed" });
+                        }
+                    } else {
+                        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("UNABLE TO CREATE USER ACCOUNT"));
+                        res.redirect("/");
+                    }
+                } catch (error) {
+                    console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT HASHED: ") + error);
+                    res.redirect("/");
+                }
+            });
+            
 
             app.listen(PORT, () => {
                 const now = new Date();

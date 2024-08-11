@@ -120,7 +120,7 @@
             }
 
             #taskbar {
-                display: "none";
+                display: none;
                 position: absolute;
                 left: 0;
                 bottom: 0;
@@ -353,8 +353,8 @@
                 width: 60%;
                 padding: 10px;
                 color: white;
-                background-color: transparent;
-                border: 1px solid white;
+                background-color: #181818;
+                border: 1px none white;
                 border-radius: 10px;
                 box-sizing: border-box;
                 font-size: 18px;
@@ -408,6 +408,114 @@
                 border: none;
             }
 
+            .win-resize-top {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 10px;
+                width: calc(100% - 20px);
+                height: 5px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: n-resize;
+            }
+
+            .win-resize-left {
+                display: block;
+                position: absolute;
+                top: 10px;
+                left: 0;
+                width: 5px;
+                height: calc(100% - 20px);
+                background-color: transparent;
+                z-index: 1000;
+                cursor: w-resize;
+            }
+
+            .win-resize-tl {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 10px;
+                height: 10px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: nw-resize;
+            }
+
+            .win-resize-tr {
+                display: block;
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 10px;
+                height: 10px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: ne-resize;
+            }
+
+            .win-resize-right {
+                display: block;
+                position: absolute;
+                top: 10px;
+                right: 0;
+                width: 5px;
+                height: calc(100% - 20px);
+                background-color: transparent;
+                z-index: 1000;
+                cursor: e-resize;
+            }
+
+            .win-resize-bl {
+                display: block;
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 10px;
+                height: 10px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: sw-resize;
+            }
+
+            .win-resize-br {
+                display: block;
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                width: 10px;
+                height: 10px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: se-resize;
+            }
+
+            .win-resize-bottom {
+                display: block;
+                position: absolute;
+                left: 10px;
+                bottom: 0;
+                width: calc(100% - 20px);
+                height: 5px;
+                background-color: transparent;
+                z-index: 1000;
+                cursor: s-resize;
+            }
+
+            .win-title {
+                display: block;
+                position: absolute;
+                top: -7px;
+                left: 20px;
+                height: 20px;
+                color: white;
+                font-size: 18px;
+                line-height: 1;
+                user-select: none;
+            }
+
             .win-close {
                 display: block;
                 position: absolute;
@@ -418,6 +526,7 @@
                 padding: 3px;
                 border-radius: 50%;
                 transition: 0.2s;
+                user-select: none;
             }
 
             .win-close:hover {
@@ -444,6 +553,7 @@
                 padding: 3px;
                 border-radius: 50%;
                 transition: 0.2s;
+                user-select: none;
             }
 
             .win-max:hover {
@@ -470,6 +580,7 @@
                 padding: 3px;
                 border-radius: 50%;
                 transition: 0.2s;
+                user-select: none;
             }
 
             .win-min:hover {
@@ -484,6 +595,15 @@
                 width: 60%;
                 height: auto;
                 transform: translate(-50%, 30%);
+            }
+
+            .win-left-resizer {
+                position: absolute;
+                top: 2%;
+                left: 0;
+                width: 5px;
+                height: 96%;
+                background-color: black;
             }
         </style>
     </head>
@@ -578,6 +698,8 @@
 
             let offsetX = 0;
             let offsetY = 0;
+            let offsetW = 0;
+            let offsetH = 0;
 
             let currZ = 1;
 
@@ -687,6 +809,250 @@
                 win.dataset.isResizing = "false";
                 win.dataset.isMax = "false";
 
+                const resizeTop = document.createElement("div");
+                resizeTop.id = "resize-top-" + uuid;
+                resizeTop.className = "win-resize-top";
+                resizeTop.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetY = event.clientY - win.dataset.currY;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "n-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, win.dataset.currX, event.pageY - offsetY, win.dataset.currW, winRect.bottom - event.pageY);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                };
+                win.appendChild(resizeTop);
+
+                const resizeLeft = document.createElement("div");
+                resizeLeft.id = "resize-left-" + uuid;
+                resizeLeft.className = "win-resize-left";
+                resizeLeft.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetX = event.clientX - win.dataset.currX;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "w-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, event.pageX - offsetX, win.dataset.currY, winRect.right - event.pageX, win.dataset.currH);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                };
+                win.appendChild(resizeLeft);
+
+                const resizeTL = document.createElement("div");
+                resizeTL.id = "resize-tl-" + uuid;
+                resizeTL.className = "win-resize-tl";
+                resizeTL.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetX = event.clientX - win.dataset.currX;
+                        offsetY = event.clientY - win.dataset.currY;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "nw-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, event.pageX - offsetX, event.pageY - offsetY, winRect.right - event.pageX, winRect.bottom - event.pageY);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                }
+                win.appendChild(resizeTL);
+
+                const resizeBL = document.createElement("div");
+                resizeBL.id = "resize-bl-" + uuid;
+                resizeBL.className = "win-resize-bl";
+                resizeBL.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetX = event.clientX - win.dataset.currX;
+                        offsetY = event.clientY - win.dataset.currY;
+                        offsetH = event.clientY - win.dataset.currH;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "sw-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, event.pageX - offsetX, win.dataset.currY, winRect.right - event.pageX, event.pageY - offsetH);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                }
+                win.appendChild(resizeBL);
+
+                const resizeRight = document.createElement("div");
+                resizeRight.id = "resize-right-" + uuid;
+                resizeRight.className = "win-resize-right";
+                resizeRight.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetW = event.clientX - win.dataset.currW;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "e-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, event.pageX - offsetW, win.dataset.currH);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                };
+                win.appendChild(resizeRight);
+
+                const resizeTR = document.createElement("div");
+                resizeTR.id = "resize-tr-" + uuid;
+                resizeTR.className = "win-resize-tr";
+                resizeTR.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetY = event.clientY - win.dataset.currY;
+                        offsetW = event.clientX - win.dataset.currW;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "ne-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, win.dataset.currX, event.pageY - offsetY, event.pageX - offsetW, winRect.bottom - event.pageY);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                }
+                win.appendChild(resizeTR);
+
+                const resizeBR = document.createElement("div");
+                resizeBR.id = "resize-br-" + uuid;
+                resizeBR.className = "win-resize-br";
+                resizeBR.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetX = event.clientX - win.dataset.currX;
+                        offsetY = event.clientY - win.dataset.currY;
+                        offsetW = event.clientX - win.dataset.currW;
+                        offsetH = event.clientY - win.dataset.currH;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "se-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, event.pageX - offsetW, event.pageY - offsetH);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                }
+                win.appendChild(resizeBR);
+
+                const resizeBottom = document.createElement("div");
+                resizeBottom.id = "resize-bottom-" + uuid;
+                resizeBottom.className = "win-resize-bottom";
+                resizeBottom.onmousedown = function(event) {
+                    if (win.dataset.canResize === "true") {
+                        const winRect = win.getBoundingClientRect();
+                        offsetH = event.clientY - win.dataset.currH;
+                        application.style.pointerEvents = "none";
+                        win.dataset.isResizing = "true";
+
+                        document.body.style.cursor = "s-resize";
+
+                        function onMouseMoveWin(event) {
+                            setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, win.dataset.currW, event.pageY - offsetH);
+                        }
+
+                        document.addEventListener("mousemove", onMouseMoveWin);
+                    }
+
+                    document.addEventListener("mouseup", function() {
+                        document.removeEventListener("mousemove", onMouseMoveWin);
+
+                        document.body.style.cursor = "default";
+                        application.style.pointerEvents = "auto";
+                        win.dataset.isResizing = "false";
+                    }, { once: true });
+                };
+                win.appendChild(resizeBottom);
+
+                const title = document.createElement("p");
+                title.id = "title-" + uuid;
+                title.className = "win-title";
+                win.appendChild(title);
+
                 const clsBtn = document.createElement("a");
                 clsBtn.id = "cls-" + uuid;
                 clsBtn.className = "win-close";
@@ -730,6 +1096,8 @@
                     appDoc.addEventListener("mousedown", function() {
                         topWin(win);
                     });
+
+                    title.innerText = appDoc.title;
                 };
 
                 win.appendChild(application);
@@ -799,11 +1167,28 @@
                 }
             }
 
-            function maxWin(winId) {
+            window.maxWin = function(winId) {
                 const currWin = document.getElementById(winId);
+                const uuid = winId.slice(4);
+                const resizeTop = document.getElementById("resize-top-" + uuid);
+                const resizeLeft = document.getElementById("resize-left-" + uuid);
+                const resizeTL = document.getElementById("resize-tl-" + uuid);
+                const resizeBL = document.getElementById("resize-bl-" + uuid);
+                const resizeRight = document.getElementById("resize-right-" + uuid);
+                const resizeTR = document.getElementById("resize-tr-" + uuid);
+                const resizeBR = document.getElementById("resize-br-" + uuid);
+                const resizeBottom = document.getElementById("resize-bottom-" + uuid);
 
                 if (currWin) {
                     if (currWin.dataset.isMax === "true") {
+                        resizeTop.style.display = "block";
+                        resizeLeft.style.display = "block";
+                        resizeTL.style.display = "block";
+                        resizeBL.style.display = "block";
+                        resizeRight.style.display = "block";
+                        resizeTR.style.display = "block";
+                        resizeBR.style.display = "block";
+                        resizeBottom.style.display = "block";
                         currWin.style.left = currWin.dataset.currX + "px";
                         currWin.style.top = currWin.dataset.currY + "px";
                         currWin.style.width = currWin.dataset.currW + "px";
@@ -814,6 +1199,14 @@
                         currWin.dataset.canDrag = "true";
                         currWin.dataset.canResize = "true";
                     } else if (currWin.dataset.isMax === "false") {
+                        resizeTop.style.display = "none";
+                        resizeLeft.style.display = "none";
+                        resizeTL.style.display = "none";
+                        resizeBL.style.display = "none";
+                        resizeRight.style.display = "none";
+                        resizeTR.style.display = "none";
+                        resizeBR.style.display = "none";
+                        resizeBottom.style.display = "none";
                         currWin.style.left = 0;
                         currWin.style.top = 0;
                         currWin.style.width = "100%";
@@ -824,9 +1217,30 @@
                         currWin.dataset.canDrag = "false";
                         currWin.dataset.canResize = "false";
                     }
-                }
 
-                topWin(currWin);
+                    topWin(currWin);
+                }
+            }
+
+            window.setWinGeometry = function(winId, x, y, w, h) {
+                const currWin = document.getElementById(winId);
+
+                if (currWin) {
+                    if (currWin.dataset.isMax === "true") {
+                        maxWin(winId);
+                    }
+
+                    currWin.style.left = x + "px";
+                    currWin.style.top = y + "px";
+                    currWin.style.width = w + "px";
+                    currWin.style.height = h + "px";
+                    currWin.dataset.currX = x;
+                    currWin.dataset.currY = y;
+                    currWin.dataset.currW = w;
+                    currWin.dataset.currH = h;
+
+                    topWin(currWin);
+                }
             }
 
             function topWin(win) {
@@ -842,7 +1256,7 @@
             }
 
             document.addEventListener("mousedown", function(event) {
-                const currWin = event.target;
+                let currWin = event.target;
                 const application = currWin.getElementsByTagName("iframe")[0];
 
                 if (windows.some(win => win.id === currWin.id)) {
@@ -861,7 +1275,7 @@
             });
 
             document.addEventListener("mousemove", function(event) {
-                const currWin = event.target;
+                let currWin = event.target;
 
                 if (windows.some(win => win.id === currWin.id) && currWin.dataset.isDragging === "true") {
                     if (event.pageY - offsetY < 0) {
@@ -869,9 +1283,13 @@
                     } else {
                         currWin.style.top = event.pageY - offsetY + "px";
                     }
+
                     currWin.style.left = event.pageX - offsetX + "px";
                     currWin.dataset.currX = event.pageX - offsetX;
                     currWin.dataset.currY = event.pageY - offsetY;
+                } else if (windows.some(win => win.id === currWin.parentElement.id) && currWin.parentElement.dataset.isResizing === "true") {
+                    currWin = currWin.parentElement;
+                    currWin.style                    
                 }
             });
 
@@ -920,7 +1338,6 @@
                         console.error("Failed to close app: ", data);
                     }
 
-                    taskbar.style.display = "block";
                     for (let i = 0; i < result.node.length; i++) {
                         const appId = result.node[i].appId;
                         console.log("Taskbar: ", result.node[i]);
@@ -950,6 +1367,8 @@
                             })
                             .catch(error => console.error("Error: ", error));
                     }
+
+                    taskbar.style.display = "block";
                 })
                 .catch(error => console.error("Error: ", error));
             }
@@ -1041,8 +1460,6 @@
                 document.getElementById("signin-form").addEventListener("submit", async (event) => {
                     event.preventDefault();
 
-
-
                     const formData = new FormData(event.target);
 
                     try {
@@ -1050,7 +1467,7 @@
                             method: "POST",
                             body: new URLSearchParams(formData),
                             headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded'  // Ensure correct Content-Type
+                                'Content-Type': 'application/x-www-form-urlencoded'
                             }
                         });
 
@@ -1058,6 +1475,30 @@
                             hideLogin();
                         } else {
                             console.error("User Signin: Form submission failed: ", response.statusText);
+                        }
+                    } catch (error) {
+                        console.error("Error occured: ", error);
+                    }
+                });
+
+                document.getElementById("signup-form").addEventListener("submit", async (event) => {
+                    event.preventDefault();
+
+                    const formData = new FormData(event.target);
+
+                    try {
+                        const response = await fetch("/signup", {
+                            method: "POST",
+                            body: new URLSearchParams(formData),
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            }
+                        });
+
+                        if (response.ok) {
+                            hideSignup();
+                        } else {
+                            console.error("User Signup: Form submission failed: ", response.statusText);
                         }
                     } catch (error) {
                         console.error("Error occured: ", error);
