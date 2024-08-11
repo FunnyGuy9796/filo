@@ -24,7 +24,9 @@ Filo was created with the goal of being a possible choice for a daily driver. Th
      npm install
      npm start
      ```
+![Console startup](public/images/console_startup.png)
 4. Once the system has booted ensure that all components have started successfully and navigate to the URL printed to the terminal
+![Desktop](public/images/desktop.png)
 ## API Documentation - WIP
 Including the Filo API in your project is as simple as include a script tag in your .ejs file.
 #### `<script src="/js/filo-api.js"></script>`
