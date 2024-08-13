@@ -373,20 +373,6 @@
 
                 pathInput.style.width = width - "350px";
             });
-
-            window.onload = async function() {
-                filo.fs.mkDir("/.appData/file_explorer")
-                    .then(result => {
-                        console.log("app data directory created successfully");
-
-                        searchPath(filePath);
-                    })
-                    .catch(error => {
-                        console.error(error.message || error);
-
-                        searchPath(filePath);
-                    });
-            }
         </script>
     </body>
 </html>

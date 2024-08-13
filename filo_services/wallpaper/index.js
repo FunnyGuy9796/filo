@@ -19,16 +19,6 @@ function setWallpaper(filePath) {
                 return;
             }
 
-            fs.access(iconFilePath, fs.constants.F_OK, (err) => {
-                if (err) {
-                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Icon file for app" + chalk.bold("[" + appId + "]") + " could not be found");
-                    
-                    res.status(404).send("icon file not found");
-                } else {
-                    res.sendFile(iconFilePath);
-                }
-            });
-
             const cols = [
                 { name: "path", type: "TEXT" }
             ];

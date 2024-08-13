@@ -7,33 +7,6 @@ const app = express();
 const mime = require("mime-types");
 const argon2 = require("argon2");
 
-const admin = require("firebase-admin");
-require('firebase/compat/database');
-
-const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
-const client = new SecretManagerServiceClient();
-
-async function getSecret() {
-    const [version] = await client.accessSecretVersion({
-        name: "projects/205280975096/secrets/firebase_admin_sdk_key/versions/latest",
-    });
-
-    const payload = version.payload.data.toString("utf8");
-    return JSON.parse(payload);
-}
-
-let database;
-
-(async () => {
-    const serviceAccount = await getSecret();
-
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: "https://filo-b61fa-default-rtdb.firebaseio.com/",
-    });
-    database = admin.database();
-})().catch(console.error);
-
 const fs = require("./filo_modules/fs");
 const network = require("./filo_modules/net");
 const memory = require("./filo_modules/mem");
@@ -97,52 +70,6 @@ async function verifyPassword(storedHash, password) {
         console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + err);
 
         return false;
-    }
-}
-
-function setUser(username, email, token) {
-    const userRef = database.ref(`users/${username}`);
-
-    return new Promise((resolve, reject) => {
-        userRef.set({
-            email: email,
-            token: token
-        }, (error) => {
-            if (error) {
-                console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
-                reject(error);
-            } else {
-                console.log(chalk.cyan.bold("[FILO/USER]") + ` -> User account created successfully | {Username: ${username}, Email: ${email}}`);
-                resolve(true);
-            }
-        });
-    });
-}
-
-async function getUser(email) {
-    const userRef = database.ref(`users`);
-
-    try {
-        const snapshot = await userRef.once("value");
-        let userData = null;
-
-        snapshot.forEach((userSnapshot) => {
-            const user = userSnapshot.val();
-            if (user.email === email) {
-                userData = { username: userSnapshot, ...user };
-                return true;
-            }
-        });
-
-        if (userData) {
-            return userData;
-        } else {
-            console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Could not find the specified account");
-            return null;
-        }
-    } catch(error) {
-        console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
-        return null;
     }
 }
 
@@ -214,7 +141,7 @@ async function startServices() {
             try {
                 await startService(serviceId);
                 res.status(200).send("success");
-            } catch(error) {
+            } catch (error) {
                 console.log(chalk.cyan.bold("[FILO/SERVICES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
                 res.status(500).send("failed");
             }
@@ -562,6 +489,7 @@ async function boot() {
                 const email = req.body.email;
                 const password = req.body.password;
                 
+                /*
                 getUser(email).then((userData) => {
                     if (userData) {
                         (async () => {
@@ -595,6 +523,7 @@ async function boot() {
                         });
                     }
                 });
+                */
             });
 
             app.post("/signup", async (req, res) => {
@@ -602,6 +531,7 @@ async function boot() {
                 const email = req.body.email;
                 const password = req.body.password;
             
+                /*
                 try {
                     const hash = await argon2.hash(password);
                     const status = await setUser(username, email, hash);
@@ -630,6 +560,7 @@ async function boot() {
                     console.log(chalk.cyan.bold("[FILO/USER") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("USER NOT HASHED: ") + error);
                     res.redirect("/");
                 }
+                */
             });
             
 

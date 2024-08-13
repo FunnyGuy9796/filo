@@ -141,6 +141,14 @@ router.post("/upload", upload.single("file"), (req, res) => {
     try {
         vol.writeFileSync(filePath, req.file.buffer);
 
+        const newData = vol.readFileSync(filePath);
+
+        if (Buffer.compare(req.file.buffer, newData) !== 0) {
+            res.status(500).json({
+                message: "error writing file to memfs"
+            });
+        }
+
         res.json({
             message: "file uploaded successfully"
         });
