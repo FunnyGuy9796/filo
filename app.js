@@ -27,7 +27,6 @@ const configData = JSON.parse(data);
 const servicesPath = configData.services_path;
 const appsPath = configData.apps_path;
 const netRequired = configData.network_required;
-const saveFilesystem = configData.save_filesystem;
 
 function waitForCondition(interval = 100) {
     return new Promise((resolve, reject) => {
@@ -166,48 +165,21 @@ async function startServices() {
     }
 }
 
-function copyDirToVfs(sourceDir, virtualRoot) {
-    const entries = realFs.readdirSync(sourceDir, { withFileTypes: true });
-
-    fs.vol.mkdirSync(virtualRoot, { recursive: true });
-
-    for (const entry of entries) {
-        const srcPath = path.join(sourceDir, entry.name);
-        const destPath = path.join(virtualRoot, entry.name);
-
-        if (entry.isDirectory()) {
-            copyDirToVfs(srcPath, destPath);
-        } else if (entry.isFile()) {
-            try {
-                const data = realFs.readFileSync(srcPath);
-                fs.vol.writeFileSync(destPath, data);
-                const newData = fs.vol.readFileSync(destPath);
-
-                if (Buffer.compare(data, newData) !== 0) {
-                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File data has become corrupted");
-                }
-            } catch (error) {
-                console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Error installing one or more files:" + error);
-            }
-        }
-    }
-}
-
 function genRoutes(res, appId, appIndexFile) {
-    const appPath = path.join("/sys/apps", appId);
+    const appPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps", appId);
     const appFilePath = path.join(appPath, appIndexFile);
     const ext = path.extname(appFilePath);
-    const status = fs.vol.existsSync(appFilePath);
+    const status = realFs.existsSync(appFilePath);
 
     if (status) {
         app.set("view engine", "ejs");
 
         const registerRoutes = (dirPath) => {
-            const files = fs.vol.readdirSync(dirPath);
+            const files = realFs.readdirSync(dirPath);
 
             files.forEach(file => {
                 const filePath = path.join(dirPath, file);
-                const stat = fs.vol.statSync(filePath);
+                const stat = realFs.statSync(filePath);
                 
                 if (stat.isDirectory()) {
                     registerRoutes(filePath);
@@ -221,7 +193,7 @@ function genRoutes(res, appId, appIndexFile) {
 
                         app.get(routePath, (req, res) => {
                             try {
-                                const data = fs.vol.readFileSync(filePath, "utf8");
+                                const data = realFs.readFileSync(filePath, "utf8");
                                 const rendered = ejs.render(data);
 
                                 res.send(rendered);
@@ -239,7 +211,7 @@ function genRoutes(res, appId, appIndexFile) {
 
         console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Started application | App: " + appId);
 
-        const mainData = fs.vol.readFileSync(appFilePath, "utf8");
+        const mainData = realFs.readFileSync(appFilePath, "utf8");
 
         try {
             const rendered = ejs.render(mainData);
@@ -258,34 +230,36 @@ async function installApp(appId) {
     const absPath = path.join(appsPath, appId);
 
     if (realFs.existsSync(absPath)) {
-        const vFilePath = `/sys/apps/${appId}`;
-        const status = fs.fs.existsSync(vFilePath);
+        const installPath = `/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps/${appId}`;
+        const status = realFs.existsSync(installPath);
 
         if (!status) {
-            fs.fs.mkdirSync(vFilePath);
+            realFs.mkdirSync(installPath);
 
             try {
-                copyDirToVfs(absPath, vFilePath);
+                fs.copyDir(absPath, installPath);
                 
                 try {
-                    const appData = fs.vol.readFileSync(path.join(vFilePath, "appConfig.json"), "utf8");
+                    const appData = realFs.readFileSync(path.join(installPath, "appConfig.json"), "utf8");
 
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Installing" + chalk.bold("[" + appId + "]") + ".. [" + chalk.green.bold("DONE") + "]");
                 } catch (error) {
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Config file for app" + chalk.bold("[" + appId + "]") + " could not be found: " + error);
                 }
             } catch(error) {
-                console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold("[" + appId + "]") + " onto virtual filesystem: " + error);
+                console.log(chalk.cyan.bold("[FILO/APPLICATION") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold("[" + appId + "]") + ": " + error);
             }
         } else {
             console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> app" + chalk.bold("[" + appId + "]") + " already installed");
         }
+    } else {
+        console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> App" + chalk.bold("[" + appId + "]") + " could not be found");
     }
 }
 
 function startApp(appId, uuid) {
-    const vFilePath = `/sys/apps/${appId}`;
-    const appData = fs.vol.readFileSync(path.join(vFilePath, "appConfig.json"), "utf8");
+    const appPath = `/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps/${appId}`;
+    const appData = realFs.readFileSync(path.join(appPath, "appConfig.json"), "utf8");
     const appConfigData = JSON.parse(appData);
 
     const cols = ["id", "name", "index_file", "icon_file"];
@@ -313,12 +287,12 @@ function startAppsProcessor(callback) {
         (async () => {
             try {
                 await installApp(defaultApps[i]);
-            } catch(error) {
+            } catch (error) {
                 console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold(`[${defaultApps[i]}]`) + ": " + error);
             }
         })();
     }
-    
+
     const cols = [
         { name: "id", type: "TEXT", primary: true },
         { name: "name", type: "TEXT" },
@@ -346,11 +320,11 @@ function startAppsProcessor(callback) {
     app.get("/app-info/:appId", (req, res) => {
         const { appId } = req.params;
 
-        const absPath = path.join("/sys/apps", appId);
+        const absPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps", appId);
         const appConfigFile = path.join(absPath, "appConfig.json");
         let appData;
         try {
-            appData = fs.vol.readFileSync(appConfigFile, "utf8");
+            appData = realFs.readFileSync(appConfigFile, "utf8");
         } catch (error) {
             console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Config file for app" + chalk.bold("[" + appId + "]") + " could not be found");
             return res.status(404).send("App config file not found");
@@ -366,9 +340,9 @@ function startAppsProcessor(callback) {
             let iconFilePath = path.join(absPath, appIconFile);
 
             try {
-                fs.vol.statSync(iconFilePath);
+                realFs.statSync(iconFilePath);
                 
-                const iconFileData = fs.vol.readFileSync(iconFilePath);
+                const iconFileData = realFs.readFileSync(iconFilePath);
 
                 res.contentType(path.extname(iconFilePath) || "application/octet-stream");
                 res.send(iconFileData);
@@ -427,17 +401,17 @@ async function boot() {
 
             app.get("/file/*", (req, res) => {
                 const currPath = decodeURIComponent(req.params[0]);
-                const filePath = path.join("/", currPath);
+                const filePath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", currPath);
         
                 try {
-                    const stats = fs.vol.statSync(filePath);
+                    const stats = realFs.statSync(filePath);
 
                     if (stats.isDirectory()) {
-                        const files = fs.vol.readdirSync(filePath);
+                        const files = realFs.readdirSync(filePath);
 
                         const filePairs = files.map(file => {
                             const fullPath = path.join(filePath, file);
-                            const stats = fs.vol.statSync(fullPath);
+                            const stats = realFs.statSync(fullPath);
 
                             return {
                                 name: file,
@@ -449,7 +423,7 @@ async function boot() {
                             files: filePairs
                         });
                     } else if (stats.isFile()) {
-                        const fileData = fs.vol.readFileSync(filePath);
+                        const fileData = realFs.readFileSync(filePath);
 
                         const mimeType = mime.contentType(path.extname(filePath)) || 'application/octet-stream';
                         res.setHeader('Content-Type', mimeType);
@@ -597,18 +571,6 @@ async function boot() {
 
 async function cleanup() {
     console.log(chalk.cyan.bold("[FILO]") + " -> Cleaning up before shutting down..");
-
-    if (saveFilesystem) {
-        fs.saveFs((status, message, error) => {
-            console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. " + message);
-    
-            if (!status) {
-                console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
-            }
-        });
-    } else {
-        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. [" + chalk.yellow.bold("SKIPPED") + ']');
-    }
 
     memory.db.close();
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Cleaning up memory.. [" + chalk.green.bold("DONE") + ']');

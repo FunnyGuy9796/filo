@@ -349,28 +349,6 @@ class filo {
                 throw error;
             }
         }
-
-        static async upload(file) {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-                const response = await fetch("/api/fs/upload", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(`${result.message}`);
-                }
-
-                return result;
-            } catch (error) {
-                throw error;
-            }
-        }
     }
 
     static sys = class {

@@ -2,14 +2,10 @@ const express = require('express');
 const chalk = require("chalk");
 const router = express.Router();
 
-const { fs, vol } = require("memfs");
-const realFs = require("fs");
+const fs = require("fs");
 const path = require("path");
-const multer = require("multer");
 
-const upload = multer();
-
-const snapshotFile = path.join(__dirname, "filesystem.json");
+const filesystem = path.join(__dirname, "filesystem");
 
 const paths = [
     "/.trash",
@@ -27,15 +23,16 @@ const paths = [
 ];
 
 router.post("/createDir", (req, res) => {
-    const { path } = req.body;
-    const status = checkDir(path);
+    const { oldPath } = req.body;
+    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const status = checkDir(newPath);
 
     if (status) {
         res.status(409).json({
             message: "dir already exists"
         });
     } else {
-        fs.mkdirSync(path);
+        fs.mkdirSync(newPath);
 
         res.status(201).json({
             message: "success"
@@ -44,17 +41,18 @@ router.post("/createDir", (req, res) => {
 });
 
 router.delete("/rmDir", (req, res) => {
-    const { path } = req.body;
+    const { oldPath } = req.body;
+    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
 
-    if (!path) {
+    if (!oldPath) {
         return res.status(400).json({ message: "the provided input is invalid" });
     }
 
-    const status = checkDir(path);
+    const status = checkDir(newPath);
 
     if (status) {
         try {
-            fs.rmdirSync(path);
+            fs.rmdirSync(newPath);
 
             res.status(201).json({
                 message: "success"
@@ -72,13 +70,14 @@ router.delete("/rmDir", (req, res) => {
 });
 
 router.post("/createFile", (req, res) => {
-    const { path, content, type } = req.body;
+    const { oldPath, content } = req.body;
+    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
 
-    if (!path || typeof content !== "string" || typeof type !== "string") {
+    if (!oldPath || typeof content !== "string") {
         return res.status(400).json({ message: "the provided input is invalid" });
     }
 
-    const status = checkFile(path);
+    const status = checkFile(newPath);
 
     if (status) {
         res.status(409).json({
@@ -86,7 +85,7 @@ router.post("/createFile", (req, res) => {
         });
     } else {
         try {
-            fs.writeFileSync(path, content, type);
+            fs.writeFileSync(newPath, content);
 
             res.status(201).json({
                 message: "success"
@@ -100,19 +99,20 @@ router.post("/createFile", (req, res) => {
 });
 
 router.delete("/rmFile", (req, res) => {
-    const { path } = req.body;
+    const { oldPath } = req.body;
+    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
 
-    if (!path) {
+    if (!oldPath) {
         return res.status(400).json({
             message: "the provided input is invalid"
         });
     }
 
-    const status = checkFile(path);
+    const status = checkFile(newPath);
 
     if (status) {
         try {
-            fs.unlinkSync(path);
+            fs.unlinkSync(newPath);
 
             res.status(201).json({
                 message: "success"
@@ -129,45 +129,16 @@ router.delete("/rmFile", (req, res) => {
     }
 });
 
-router.post("/upload", upload.single("file"), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({
-            message: "no file uploaded"
-        });
-    }
-
-    const filePath = `/usr/home/Downloads/${req.file.originalname}`;
-
-    try {
-        vol.writeFileSync(filePath, req.file.buffer);
-
-        const newData = vol.readFileSync(filePath);
-
-        if (Buffer.compare(req.file.buffer, newData) !== 0) {
-            res.status(500).json({
-                message: "error writing file to memfs"
-            });
-        }
-
-        res.json({
-            message: "file uploaded successfully"
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: "error writing file to memfs"
-        });
-    }
-});
-
 router.post("/stat", (req, res) => {
-    const { path } = req.body;
+    const { oldPath } = req.body;
+    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
 
-    if (!path) {
+    if (!oldPath) {
         return res.status(400).json({ message: "the provided input is invalid" });
     }
 
     try {
-        const result = fs.statSync(path);
+        const result = fs.statSync(newPath);
 
         res.status(201).json({
             message: "success",
@@ -179,6 +150,25 @@ router.post("/stat", (req, res) => {
         });
     }
 });
+
+function copyDir(source, destination) {
+    if (!fs.existsSync(destination)) {
+        fs.mkdirSync(destination, { recursive: true });
+    }
+
+    const items = fs.readdirSync(source);
+
+    items.forEach(item => {
+        const sourcePath = path.join(source, item);
+        const destinationPath = path.join(destination, item);
+
+        if (fs.lstatSync(sourcePath).isDirectory()) {
+            copyDir(sourcePath, destinationPath);
+        } else {
+            fs.copyFileSync(sourcePath, destinationPath);
+        }
+    });
+}
 
 function checkDir(path) {
     try {
@@ -196,28 +186,15 @@ function checkFile(path) {
     }
 }
 
-function saveFs(callback) {
-    const snapshot = vol.toJSON();
-    
-    try {
-        realFs.writeFileSync(snapshotFile, JSON.stringify(snapshot, null, 2));
-
-        callback(true, "[" + chalk.green.bold("DONE") + "]");
-    } catch (error) {
-        callback(false, "[" + chalk.red.bold("FAILED") + "]", error);
-    }
-}
-
 function checkFs(callback) {
-    if (realFs.existsSync(snapshotFile)) {
+    if (fs.existsSync(filesystem)) {
         try {
-            const snapshot = JSON.parse(realFs.readFileSync(snapshotFile, "utf8"));
+            fs.readdirSync(filesystem);
 
-            vol.fromJSON(snapshot);
-
-            paths.forEach(path => {
-                if (!checkDir(path)) {
-                    fs.mkdirSync(path);
+            paths.forEach(currPath => {
+                const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", currPath);
+                if (!checkDir(newPath)) {
+                    fs.mkdirSync(newPath);
                 }
             });
 
@@ -231,9 +208,8 @@ function checkFs(callback) {
 module.exports = {
     router,
     fs,
-    vol,
+    copyDir,
     checkDir,
     checkFile,
-    saveFs,
     checkFs
 };

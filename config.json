@@ -2,6 +2,5 @@
     "port": 3001,
     "services_path": "/home/christopher/Documents/filo/filo_services",
     "apps_path": "/home/christopher/Documents/filo/filo_apps",
-    "network_required": true,
-    "save_filesystem": true
+    "network_required": true
 }
