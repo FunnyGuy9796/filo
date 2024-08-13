@@ -2,11 +2,12 @@ const express = require('express');
 const chalk = require("chalk");
 const router = express.Router();
 
-const chardet = require('chardet');
-const iconv = require('iconv-lite');
 const { fs, vol } = require("memfs");
 const realFs = require("fs");
 const path = require("path");
+const multer = require("multer");
+
+const upload = multer();
 
 const snapshotFile = path.join(__dirname, "filesystem.json");
 
@@ -38,29 +39,6 @@ router.post("/createDir", (req, res) => {
 
         res.status(201).json({
             message: "success"
-        });
-    }
-});
-
-router.post("/readDir", (req, res) => {
-    const { path } = req.body;
-
-    if (!path) {
-        return res.status(400).json({ message: "the provided input is invalid" });
-    }
-
-    const status = checkDir(path);
-
-    if (status) {
-        const result = fs.readdirSync(path);
-
-        res.status(201).json({
-            message: "success",
-            contents: result
-        });
-    } else {
-        res.status(406).json({
-            message: "the provided path is not a directory"
         });
     }
 });
@@ -121,42 +99,13 @@ router.post("/createFile", (req, res) => {
     }
 });
 
-router.post("/readFile", (req, res) => {
-    const { path } = req.body;
-
-    if (!path) {
-        return res.status(400).json({ message: "the provided input is invalid" });
-    }
-
-    const status = checkFile(path);
-
-    if (status) {
-        try {
-            const buffer = fs.readFileSync(path);
-            const detectEncoding = chardet.detect(buffer);
-            const content = iconv.decode(buffer, detectEncoding || "utf8");
-
-            res.status(201).json({
-                message: "success",
-                contents: content
-            });
-        } catch (error) {
-            res.status(500).json({
-                message: "failed to read file"
-            });
-        }
-    } else {
-        res.status(406).json({
-            message: "the provided path is not a file"
-        });
-    }
-});
-
 router.delete("/rmFile", (req, res) => {
     const { path } = req.body;
 
     if (!path) {
-        return res.status(400).json({ message: "the provided input is invalid" });
+        return res.status(400).json({
+            message: "the provided input is invalid"
+        });
     }
 
     const status = checkFile(path);
@@ -180,7 +129,29 @@ router.delete("/rmFile", (req, res) => {
     }
 });
 
-router.post("/statFile", (req, res) => {
+router.post("/upload", upload.single("file"), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            message: "no file uploaded"
+        });
+    }
+
+    const filePath = `/usr/home/Downloads/${req.file.originalname}`;
+
+    try {
+        vol.writeFileSync(filePath, req.file.buffer);
+
+        res.json({
+            message: "file uploaded successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "error writing file to memfs"
+        });
+    }
+});
+
+router.post("/stat", (req, res) => {
     const { path } = req.body;
 
     if (!path) {
@@ -196,7 +167,7 @@ router.post("/statFile", (req, res) => {
         });
     } catch (error) {
         res.status(500).json({
-            message: "failed to stat file"
+            message: "failed to stat file or directory"
         });
     }
 });

@@ -55,6 +55,7 @@ class filo {
                 tooltip.style.zIndex = 1001;
                 tooltip.style.left = objRect.left + (objRect.width / 2) + "px";
                 tooltip.style.top = objRect.top - 50 + "px";
+                tooltip.style.userSelect = "none";
                 tooltip.innerText = text;
                 document.body.appendChild(tooltip);
                 tooltip.offsetHeight;
@@ -168,7 +169,7 @@ class filo {
                 method: "POST"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -181,7 +182,7 @@ class filo {
                 method: "PUT"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -194,7 +195,7 @@ class filo {
                 method: "DELETE"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -207,7 +208,7 @@ class filo {
                 method: "PUT"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -218,7 +219,7 @@ class filo {
         static async readNode(name) {
             const response = await fetch(`/api/mem/readNode/${name}`);
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -229,7 +230,7 @@ class filo {
         static async readData(name, column, value) {
             const response = await fetch(`/api/mem/readData/${name}/${column}/${value}`);
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             const result = await response.json();
@@ -240,101 +241,135 @@ class filo {
 
     static fs = class {
         static async mkDir(path) {
-            const response = await fetch("/api/fs/createDir", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
+            try {
+                const response = await fetch("/api/fs/createDir", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path }),
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            return result;
-        }
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
 
-        static async lsDir(path) {
-            const response = await fetch(`/api/fs/readDir`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
-
-            const result = await response.json();
-
-            return result;
+                return result;
+            } catch (error) {
+                throw error;
+            }
         }
 
         static async rmDir(path) {
-            const response = await fetch("/api/fs/rmDir", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
+            try {
+                const response = await fetch("/api/fs/rmDir", {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path }),
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            return result;
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
         }
 
         static async createFile(path, content, type) {
-            const response = await fetch("/api/fs/createFile", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path, content, type }),
-            });
+            try {
+                const response = await fetch("/api/fs/createFile", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path, content, type }),
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            return result;
-        }
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
 
-        static async readFile(path) {
-            const response = await fetch(`/api/fs/readFile`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
-
-            const result = await response.json();
-
-            return result;
+                return result;
+            } catch (error) {
+                throw error;
+            }
         }
 
         static async rmFile(path) {
-            const response = await fetch("/api/fs/rmFile", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
+            try {
+                const response = await fetch("/api/fs/rmFile", {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path }),
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            return result;
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
         }
 
-        static async statFile(path) {
-            const response = await fetch("/api/fs/statFile", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ path }),
-            });
+        static async stat(path) {
+            try {
+                const response = await fetch("/api/fs/stat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ path }),
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            return result;
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        static async upload(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch("/api/fs/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(`${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
         }
     }
 
@@ -344,7 +379,7 @@ class filo {
                 method: "POST"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             return response;
@@ -355,7 +390,7 @@ class filo {
                 method: "POST"
             });
             if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+                throw new Error(`${response.status} ${response.statusText}`);
             }
 
             return response;
@@ -364,25 +399,33 @@ class filo {
 
     static auth = class {
         static async getUser() {
-            const response = await fetch("/api/mem/readNode/user");
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            try {
+                const response = await fetch("/api/mem/readNode/user");
+                if (!response.ok) {
+                    throw new Error(`${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                return { email: result.node[0].email };
+            } catch (error) {
+                throw error;
             }
-
-            const result = await response.json();
-
-            return { email: result.node[0].email, token: result.node[0].token };
         }
 
         static async isSignedIn() {
-            const response = await fetch("/api/mem/readNode/user");
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            try {
+                const response = await fetch("/api/mem/readNode/user");
+                if (!response.ok) {
+                    throw new Error(`${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                return result.node[0] !== undefined;
+            } catch (error) {
+                throw error;
             }
-
-            const result = await response.json();
-
-            return result.node[0] !== undefined;
         }
 
         static async signIn() {

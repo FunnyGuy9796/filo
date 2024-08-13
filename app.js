@@ -7,15 +7,32 @@ const app = express();
 const mime = require("mime-types");
 const argon2 = require("argon2");
 
-const firebase = require("firebase/compat/app");
+const admin = require("firebase-admin");
 require('firebase/compat/database');
 
-const firebaseConfig = {
-    databaseURL: "https://filo-b61fa-default-rtdb.firebaseio.com/",
-};
+const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
+const client = new SecretManagerServiceClient();
 
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+async function getSecret() {
+    const [version] = await client.accessSecretVersion({
+        name: "projects/205280975096/secrets/firebase_admin_sdk_key/versions/latest",
+    });
+
+    const payload = version.payload.data.toString("utf8");
+    return JSON.parse(payload);
+}
+
+let database;
+
+(async () => {
+    const serviceAccount = await getSecret();
+
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: "https://filo-b61fa-default-rtdb.firebaseio.com/",
+    });
+    database = admin.database();
+})().catch(console.error);
 
 const fs = require("./filo_modules/fs");
 const network = require("./filo_modules/net");
@@ -23,25 +40,26 @@ const memory = require("./filo_modules/mem");
 
 const os = require("os");
 const realFs = require("fs");
-const fsExtra = require("fs-extra");
 const path = require("path");
 const configFile= "./config.json";
 const servicesFile = "./services.json";
 
 let fsStatus = false;
+let netStatus = false;
 let memStatus = false;
 
 const data = realFs.readFileSync(configFile, "utf8");
 const configData = JSON.parse(data);
 
-const netRequired = configData.network_required;
 const servicesPath = configData.services_path;
 const appsPath = configData.apps_path;
+const netRequired = configData.network_required;
+const saveFilesystem = configData.save_filesystem;
 
 function waitForCondition(interval = 100) {
     return new Promise((resolve, reject) => {
         const timer = setInterval(() => {
-            if (fsStatus && memStatus) {
+            if (fsStatus && netStatus && memStatus) {
                 clearInterval(timer);
                 resolve();
             }
@@ -485,15 +503,37 @@ async function boot() {
                 const filePath = path.join("/", currPath);
         
                 try {
-                    fs.vol.statSync(filePath);
-        
-                    const fileData = fs.vol.readFileSync(filePath);
+                    const stats = fs.vol.statSync(filePath);
 
-                    const mimeType = mime.contentType(path.extname(filePath)) || 'application/octet-stream';
-                    res.setHeader('Content-Type', mimeType);
-                    res.send(fileData);
+                    if (stats.isDirectory()) {
+                        const files = fs.vol.readdirSync(filePath);
+
+                        const filePairs = files.map(file => {
+                            const fullPath = path.join(filePath, file);
+                            const stats = fs.vol.statSync(fullPath);
+
+                            return {
+                                name: file,
+                                dir: stats.isDirectory()
+                            };
+                        });
+                        
+                        res.json({
+                            files: filePairs
+                        });
+                    } else if (stats.isFile()) {
+                        const fileData = fs.vol.readFileSync(filePath);
+
+                        const mimeType = mime.contentType(path.extname(filePath)) || 'application/octet-stream';
+                        res.setHeader('Content-Type', mimeType);
+                        res.send(fileData);
+                    } else {
+                        console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File or directory not supported by the filesystem");
+
+                        res.status(400).send("Unsupported file system entry");
+                    }
                 } catch(error) {
-                    console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File not found at the path specified");
+                    console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> File or directory not found at the path specified");
         
                     return res.status(404).send("File not found");
                 }
@@ -627,13 +667,17 @@ async function boot() {
 async function cleanup() {
     console.log(chalk.cyan.bold("[FILO]") + " -> Cleaning up before shutting down..");
 
-    fs.saveFs((status, message, error) => {
-        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. " + message);
-
-        if (!status) {
-            console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
-        }
-    });
+    if (saveFilesystem) {
+        fs.saveFs((status, message, error) => {
+            console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. " + message);
+    
+            if (!status) {
+                console.log(chalk.cyan.bold("[FILO/MODULES") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + error);
+            }
+        });
+    } else {
+        console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Saving filesystem.. [" + chalk.yellow.bold("SKIPPED") + ']');
+    }
 
     memory.db.close();
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Cleaning up memory.. [" + chalk.green.bold("DONE") + ']');

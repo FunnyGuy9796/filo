@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>File Explorer</title>
 
-        <script src="http://localhost:3001/js/api.js"></script>
+        <script src="/js/api.js"></script>
 
         <style>
             @font-face {
@@ -14,6 +14,7 @@
             }
 
             body {
+                height: 100vh;
                 font-family: "Poppins";
                 overflow: hidden;
             }
@@ -48,17 +49,45 @@
             }
 
             .quick-link:first-of-type {
-                margin-top: 20%;
+                margin-top: 5%;
             }
 
             .quick-link:not(:first-of-type) {
                 margin-top: 10px;
             }
 
+            #path-back {
+                display: block;
+                position: absolute;
+                top: 16px;
+                left: 180px;
+                width: 15px;
+                height: 15px;
+            }
+
+            #path-back img {
+                width: 100%;
+                height: auto;
+            }
+
+            #path-forward {
+                display: block;
+                position: absolute;
+                top: 16px;
+                left: 220px;
+                width: 15px;
+                height: 15px;
+            }
+
+            #path-forward img {
+                width: 100%;
+                height: auto;
+            }
+
             input[type=text] {
                 margin-top: 0;
                 margin-left: 250px;
-                width: 50%;
+                width: calc(100% - 350px);
                 padding: 10px;
                 color: white;
                 background-color: #181818;
@@ -66,23 +95,298 @@
                 border-radius: 10px;
                 box-sizing: border-box;
                 font-size: 18px;
+                direction: ltr;
+            }
+
+            input[type=text]:focus {
+                outline: 2px solid #005f9e;
+            }
+
+            #explorer-view {
+                display: grid;
+                position: absolute;
+                grid-template-columns: repeat(auto-fit, 120px);
+                grid-auto-rows: min-content;
+                top: 70px;
+                left: 180px;
+                padding: 10px;
+                width: calc(100% - 220px);
+                height: calc(100% - 110px);
+                overflow-y: auto;
+                gap: 5px;
+                align-items: start;
+            }
+
+            .explorer-item {
+                padding: 5px;
+                width: 100px;
+                height: 80px;
+                border-radius: 10px;
+                text-align: center;
+                user-select: none;
+                transition: 0.2s;
+            }
+
+            .explorer-item:hover {
+                background-color: #005f9e;
+            }
+
+            .explorer-item img {
+                margin-top: 10px;
+                width: 40px;
+                height: auto;
+                max-height: 40px;
+            }
+
+            .explorer-item p {
+                display: block;
+                margin-top: 0;
+                width: 100%;
+                color: white;
+                font-size: 14px;
+                line-height: 1.5;
+                user-select: none;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         </style>
     </head>
 
     <body>
         <div id="quick-access">
-            <a class="quick-link" id="quick-home">Home</a>
-            <a class="quick-link" id="quick-desktop">Desktop</a>
-            <a class="quick-link" id="quick-documents">Documents</a>
-            <a class="quick-link" id="quick-downloads">Downloads</a>
-            <a class="quick-link" id="quick-music">Music</a>
-            <a class="quick-link" id="quick-pictures">Pictures</a>
-            <a class="quick-link" id="quick-videos">Videos</a>
+            <a class="quick-link" id="quick-home" onclick="searchPath(`/usr/home`)">Home</a>
+            <a class="quick-link" id="quick-desktop" onclick="searchPath(`/usr/home/Desktop`)">Desktop</a>
+            <a class="quick-link" id="quick-documents" onclick="searchPath(`/usr/home/Documents`)">Documents</a>
+            <a class="quick-link" id="quick-downloads" onclick="searchPath(`/usr/home/Downloads`)">Downloads</a>
+            <a class="quick-link" id="quick-music" onclick="searchPath(`/usr/home/Music`)">Music</a>
+            <a class="quick-link" id="quick-pictures" onclick="searchPath(`/usr/home/Pictures`)">Pictures</a>
+            <a class="quick-link" id="quick-videos" onclick="searchPath(`/usr/home/Videos`)">Videos</a>
+            <a class="quick-link" id="quick-upload" onclick="openUploadMenu()">Upload</a>
+            <input id="quick-file-upload" type="file" style="display: none;">
         </div>
-        <input type="text">
+        <a id="path-back" onclick="navBack()">
+            <img src="/file/sys/apps/file_explorer/images/back-arrow.svg">
+        </a>
+        <a id="path-forward" onclick="navForward()">
+            <img src="/file/sys/apps/file_explorer/images/forward-arrow.svg">
+        </a>
+        <input id="path-input" type="text">
         <div id="explorer-view">
-            
+
         </div>
+
+        <script>
+            const quickAccess = document.getElementById("quick-access");
+            const uploadButton = document.getElementById("quick-file-upload");
+            const pathBack = document.getElementById("path-back");
+            const pathForward = document.getElementById("path-forward");
+            const pathInput = document.getElementById("path-input");
+            const explorerView = document.getElementById("explorer-view");
+
+            let filePath = "/usr/home";
+            let prevPaths = [];
+            let futurePaths = [];
+
+            let appData;
+
+            function searchPath(path) {
+                if (path === "" || path == undefined) {
+                    path = "/";
+                }
+
+                if (prevPaths[prevPaths.length - 1] !== path) {
+                    prevPaths.push(path);
+                }
+
+                explorerView.innerHTML = "";
+
+                fetch(`/file/${path}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+
+                        const contentType = response.headers.get("Content-Type");
+
+                        if (contentType.includes("application/json")) {
+                            return response.json().then(data => {
+                                if (data.hasOwnProperty("files")) {
+                                    data.files.forEach(file => {
+                                        let isDir = file.dir;
+                                        const name = file.name;
+                                        let ext = "";
+
+                                        if (name[0] !== ".") {
+                                            filePath = `${path}${name}`;
+                                            if (path !== "/") {
+                                                filePath = `${path}/${name}`;
+                                            }
+
+                                            const item = document.createElement("a");
+                                            item.className = "explorer-item";
+                                            item.id = "item-" + name;
+
+                                            const itemImg = document.createElement("img");
+                                            itemImg.id = "item-img-" + name;
+                                            item.appendChild(itemImg);
+
+                                            const itemLabel = document.createElement("p");
+                                            itemLabel.id = "item-label-" + name;
+                                            itemLabel.innerText = name;
+                                            item.appendChild(itemLabel);
+                                            
+                                            if (isDir) {
+                                                itemImg.src = "/file/sys/apps/file_explorer/images/folder.svg";
+                                                
+                                                (function(filePath) {
+                                                    item.ondblclick = function() {
+                                                        futurePaths = [];
+                                                        searchPath(filePath);
+                                                    };
+                                                })(filePath);
+                                            } else {
+                                                const periodIndex = name.indexOf(".");
+
+                                                if (periodIndex !== -1 && periodIndex < name.length - 1) {
+                                                    ext = name.slice(periodIndex + 1).trim();
+                                                }
+
+                                                switch (ext) {
+                                                    case "txt":
+                                                        itemImg.src = "/file/sys/apps/file_explorer/images/text-file.svg";
+                                                        break;
+                                                    case "jpg":
+                                                    case "png":
+                                                    case "svg":
+                                                        itemImg.src = "/file/" + filePath;
+                                                        break;
+                                                    case "ejs":
+                                                    case "js":
+                                                    case "json":
+                                                        itemImg.src = "/file/sys/apps/file_explorer/images/code-file.svg";
+                                                        break;
+                                                    default:
+                                                        itemImg.src = "/file/sys/apps/file_explorer/images/text-file.svg";
+                                                        break;
+                                                }
+                                            }
+
+                                            explorerView.appendChild(item);
+                                        }
+                                    });
+
+                                    filePath = path;
+                                    pathInput.value = path;
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("there was an error retrieving content at the specified path");
+                        searchPath("/usr/home");
+                    });
+            }
+
+            function filter() {
+                const result = prevPaths.length > 0 ? [prevPaths[0]] : [];
+
+                for (let i = 0; i < prevPaths.length; i++) {
+                    if (prevPaths[i] !== result[result.length - 1]) {
+                        result.push(prevPaths[i]);
+                    }
+                }
+
+                return result;
+            }
+
+            function navBack() {
+                if (prevPaths.length > 1) {
+                    const theCurrPath = prevPaths.lastIndexOf(filePath);
+                    const deleteCount = prevPaths.length - theCurrPath;
+                    const removedPaths = prevPaths.splice(theCurrPath, deleteCount);
+
+                    futurePaths.push(...removedPaths);
+                    searchPath(prevPaths[prevPaths.length - 1]);
+                }
+            }
+
+            function navForward() {
+                if (futurePaths.length > 0) {
+                    searchPath(futurePaths[futurePaths.length - 1]);
+                    futurePaths.pop();
+                }
+            }
+
+            function openUploadMenu() {
+                uploadButton.click();
+            }
+
+            uploadButton.addEventListener("change", function(event) {
+                const file = uploadButton.files[0];
+
+                if (file) {
+                    filo.fs.upload(file)
+                        .then(result => {
+                            console.log("file uploaded successfully");
+
+                            if (filePath === "/usr/home/Downloads") {
+                                searchPath(filePath);
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error.message || error);
+                        });
+                } else {
+                    alert("please select a file");
+                }
+            });
+
+            pathInput.addEventListener("keydown", function(event) {
+                if (event.key === "Enter") {
+                    pathInput.blur();
+                    searchPath(pathInput.value);
+                }
+            });
+
+            window.addEventListener("resize", function() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                if (width < 500) {
+                    pathBack.style.left = "20px";
+                    pathForward.style.left = "60px";
+                    pathInput.style.marginLeft = "90px";
+                    pathInput.style.width = "calc(100% - 190px)";
+                    quickAccess.style.display = "none";
+                    explorerView.style.left = 0;
+                    explorerView.style.width = "100%";
+                } else {
+                    pathBack.style.left = "180px";
+                    pathForward.style.left = "220px";
+                    pathInput.style.marginLeft = "250px";
+                    pathInput.style.width = "calc(100% - 350px)";
+                    explorerView.style.left = "180px";
+                    quickAccess.style.display = "block";
+                    explorerView.style.width = "calc(100% - 220px)";
+                }
+
+                pathInput.style.width = width - "350px";
+            });
+
+            window.onload = async function() {
+                filo.fs.mkDir("/.appData/file_explorer")
+                    .then(result => {
+                        console.log("app data directory created successfully");
+
+                        searchPath(filePath);
+                    })
+                    .catch(error => {
+                        console.error(error.message || error);
+
+                        searchPath(filePath);
+                    });
+            }
+        </script>
     </body>
 </html>
