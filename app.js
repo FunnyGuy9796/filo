@@ -231,6 +231,7 @@ async function installApp(appId) {
 
     if (realFs.existsSync(absPath)) {
         const installPath = `/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps/${appId}`;
+        const appDataPath = `/home/christopher/Documents/filo/filo_modules/filesystem/.appData/${appId}`;
         const status = realFs.existsSync(installPath);
 
         if (!status) {

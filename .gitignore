@@ -1,1 +1,3 @@
 node_modules
+filo_modules/filesystem/*
+!filo_modules/filesystem/
