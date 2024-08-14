@@ -14,7 +14,7 @@ const memory = require("./filo_modules/mem");
 const os = require("os");
 const realFs = require("fs");
 const path = require("path");
-const configFile= "./config.json";
+const configFile = "./config.json";
 const servicesFile = "./services.json";
 
 let fsStatus = false;
@@ -166,9 +166,8 @@ async function startServices() {
 }
 
 function genRoutes(res, appId, appIndexFile) {
-    const appPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps", appId);
+    const appPath = fs.resolvePath(`/sys/apps/${appId}`);
     const appFilePath = path.join(appPath, appIndexFile);
-    const ext = path.extname(appFilePath);
     const status = realFs.existsSync(appFilePath);
 
     if (status) {
@@ -230,9 +229,10 @@ async function installApp(appId) {
     const absPath = path.join(appsPath, appId);
 
     if (realFs.existsSync(absPath)) {
-        const installPath = `/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps/${appId}`;
-        const appDataPath = `/home/christopher/Documents/filo/filo_modules/filesystem/.appData/${appId}`;
+        const installPath = fs.resolvePath(`/sys/apps/${appId}`);
+        const appDataPath = fs.resolvePath(`.appData/${appId}`);
         const status = realFs.existsSync(installPath);
+        const dataStatus = realFs.existsSync(appDataPath);
 
         if (!status) {
             realFs.mkdirSync(installPath);
@@ -243,12 +243,16 @@ async function installApp(appId) {
                 try {
                     const appData = realFs.readFileSync(path.join(installPath, "appConfig.json"), "utf8");
 
-                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Installing" + chalk.bold("[" + appId + "]") + ".. [" + chalk.green.bold("DONE") + "]");
+                    console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Installing " + chalk.bold(appId) + ".. [" + chalk.green.bold("DONE") + "]");
                 } catch (error) {
                     console.log(chalk.cyan.bold("[FILO/APPLICATIONS") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Config file for app" + chalk.bold("[" + appId + "]") + " could not be found: " + error);
                 }
             } catch(error) {
                 console.log(chalk.cyan.bold("[FILO/APPLICATION") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed installing app" + chalk.bold("[" + appId + "]") + ": " + error);
+            }
+
+            if (!dataStatus) {
+                realFs.mkdirSync(appDataPath);
             }
         } else {
             console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> app" + chalk.bold("[" + appId + "]") + " already installed");
@@ -258,8 +262,30 @@ async function installApp(appId) {
     }
 }
 
+function removeApp(appId) {
+    const appPath = fs.resolvePath(`/sys/apps/${appId}`);
+    const appDataPath = fs.resolvePath(`.appData/${appId}`);
+    
+    try {
+        const status = realFs.existsSync(appPath);
+        const dataStatus = realFs.existsSync(appDataPath);
+
+        if (status) {
+            realFs.rmSync(appPath, { recursive: true, force: true });
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Removing " + chalk.bold(appId) + ".. [" + chalk.green.bold("DONE") + "]");
+        }
+
+        if (dataStatus) {
+            realFs.rmSync(appDataPath, { recursive: true, force: true });
+            console.log(chalk.cyan.bold("[FILO/APPLICATIONS]") + " -> Removing data for " + chalk.bold(appId) + ".. [" + chalk.green.bold("DONE") + "]");
+        }
+    } catch (error) {
+        console.log(chalk.cyan.bold("[FILO/APPLICATION") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed removing app" + chalk.bold("[" + appId + "]") + ": " + error);
+    }
+}
+
 function startApp(appId, uuid) {
-    const appPath = `/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps/${appId}`;
+    const appPath = fs.resolvePath(`/sys/apps/${appId}`);
     const appData = realFs.readFileSync(path.join(appPath, "appConfig.json"), "utf8");
     const appConfigData = JSON.parse(appData);
 
@@ -321,7 +347,7 @@ function startAppsProcessor(callback) {
     app.get("/app-info/:appId", (req, res) => {
         const { appId } = req.params;
 
-        const absPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem/sys/apps", appId);
+        const absPath = fs.resolvePath(`/sys/apps/${appId}`);
         const appConfigFile = path.join(absPath, "appConfig.json");
         let appData;
         try {
@@ -402,7 +428,7 @@ async function boot() {
 
             app.get("/file/*", (req, res) => {
                 const currPath = decodeURIComponent(req.params[0]);
-                const filePath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", currPath);
+                const filePath = fs.resolvePath(currPath);
         
                 try {
                     const stats = realFs.statSync(filePath);
@@ -570,14 +596,27 @@ async function boot() {
     }
 }
 
-async function cleanup() {
+function cleanup() {
     console.log(chalk.cyan.bold("[FILO]") + " -> Cleaning up before shutting down..");
+
+    const defaultApps = [
+        "about",
+        "file_explorer"
+    ];
+
+    for (const appId of defaultApps) {
+        try {
+            removeApp(appId);
+        } catch (error) {
+            console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> Failed removing app" + chalk.bold(`[${appId}]`) + ": " + error);
+        }
+    }
 
     memory.db.close();
     console.log(chalk.cyan.bold("[FILO/MODULES]") + " -> Cleaning up memory.. [" + chalk.green.bold("DONE") + ']');
 }
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log(" ");
     console.log(chalk.cyan.bold("[FILO]") + " -> Terminated by user");
 
@@ -585,7 +624,7 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     console.log(" ");
     console.log(chalk.cyan.bold("[FILO]") + " -> Terminated by system");
 
@@ -593,7 +632,7 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', async (err) => {
     console.log(" ");
     console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("UNCAUGHT EXCEPTION: ") + err);
 
@@ -601,7 +640,7 @@ process.on('uncaughtException', (err) => {
     process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', async (reason, promise) => {
     console.log(" ");
     console.log(chalk.cyan.bold("[FILO") + "::" + chalk.red.bold("ERROR") + chalk.cyan.bold("]") + " -> " + chalk.bold("UNHANDLED REJECTION: ") + "Location: " + promise + " | Reason: " + reason);
 

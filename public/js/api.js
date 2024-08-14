@@ -14,10 +14,10 @@ class filo {
                 args = idOrArgs;
             }
 
-            const { x = 100, y = 100, width = 600, height = 400, isMax = false } = args;
+            const { x = window.parent.currWinX, y = window.parent.currWinY, width = 600, height = 400, isMax = false } = args;
 
             if (window.parent && typeof window.parent.createWin === "function") {
-                window.parent.createWin(id, window.parent.currWinX, window.parent.currWinY, width, height, isMax);
+                window.parent.createWin(id, x, y, width, height, isMax);
             } else {
                 console.error("launchApp(): Parent function is not available");
             }
@@ -93,65 +93,6 @@ class filo {
                     hideTooltip();
                 }
             });
-        }
-
-        static showLoadingScreen(object) {
-            const loadingScreen = document.createElement("div");
-            loadingScreen.style.display = "flex";
-            loadingScreen.style.position = "fixed";
-            loadingScreen.style.top = 0;
-            loadingScreen.style.left = 0;
-            loadingScreen.style.width = "100%";
-            loadingScreen.style.height = "100%";
-            loadingScreen.style.backgroundColor = "#282828";
-            loadingScreen.style.zIndex = 1000;
-            loadingScreen.style.alignItems = "center";
-            loadingScreen.style.justifyContent = "center";
-
-            const loadingStyle = document.createElement("style");
-            loadingStyle.innerHTML = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-
-            document.head.appendChild(loadingStyle);
-
-            const loadingSpinner = document.createElement("div");
-            loadingSpinner.style.display = "block";
-            loadingSpinner.style.width = "200px";
-            loadingSpinner.style.height = "200px";
-            loadingSpinner.style.border = "16px solid #181818";
-            loadingSpinner.style.borderRadius = "50%";
-            loadingSpinner.style.borderTop = "16px solid #005f9e";
-            loadingSpinner.style.webkitAnimation = "spin 2s linear infinite";
-            loadingScreen.style.transition = "0.2s";
-
-            loadingScreen.appendChild(loadingSpinner);
-
-            object.appendChild(loadingScreen);
-
-            return { screen: loadingScreen, style: loadingStyle };
-        }
-
-        static hideLoadingScreen(loadingScreen, loadingStyle) {
-            loadingScreen.style.opacity = 0;
-
-            const handleTransitionEnd = () => {
-                loadingScreen.remove();
-                loadingStyle.remove();
-                loadingScreen.removeEventListener("transitionend", handleTransitionEnd);
-            };
-    
-            loadingScreen.addEventListener("transitionend", handleTransitionEnd);
-
-            setTimeout(() => {
-                if (loadingScreen.parentNode) {
-                    loadingScreen.remove();
-                    loadingStyle.remove();
-                }
-            }, 200);
         }
 
         static exit() {
@@ -240,6 +181,8 @@ class filo {
     }
 
     static fs = class {
+        static appData = "/.appData/" + window.location.pathname.split("/")[2];
+
         static async mkDir(path) {
             try {
                 const response = await fetch("/api/fs/createDir", {
@@ -284,14 +227,14 @@ class filo {
             }
         }
 
-        static async createFile(path, content, type) {
+        static async createFile(path, content) {
             try {
                 const response = await fetch("/api/fs/createFile", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({ path, content, type }),
+                    body: JSON.stringify({ oldPath: path, content }),
                 });
 
                 const result = await response.json();
@@ -342,6 +285,22 @@ class filo {
 
                 if (!response.ok) {
                     throw new Error(`${result.message}`);
+                }
+
+                return result;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        static async read(path) {
+            try {
+                const response = await fetch(`/file/.appData/${filo.appId}`);
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(`Unable to get content of the specified path`);
                 }
 
                 return result;

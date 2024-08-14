@@ -388,6 +388,8 @@
 
             .window {
                 position: absolute;
+                min-width: 300px;
+                min-height: 200px;
                 background-color: #282828;
                 border-radius: 10px;
                 box-shadow: 
@@ -417,7 +419,7 @@
                 height: 5px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: n-resize;
+                cursor: ns-resize;
             }
 
             .win-resize-left {
@@ -429,7 +431,7 @@
                 height: calc(100% - 20px);
                 background-color: transparent;
                 z-index: 1000;
-                cursor: w-resize;
+                cursor: ew-resize;
             }
 
             .win-resize-tl {
@@ -441,7 +443,7 @@
                 height: 10px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: nw-resize;
+                cursor: nwse-resize;
             }
 
             .win-resize-tr {
@@ -453,7 +455,7 @@
                 height: 10px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: ne-resize;
+                cursor: nesw-resize;
             }
 
             .win-resize-right {
@@ -465,7 +467,7 @@
                 height: calc(100% - 20px);
                 background-color: transparent;
                 z-index: 1000;
-                cursor: e-resize;
+                cursor: ew-resize;
             }
 
             .win-resize-bl {
@@ -477,7 +479,7 @@
                 height: 10px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: sw-resize;
+                cursor: nesw-resize;
             }
 
             .win-resize-br {
@@ -489,7 +491,7 @@
                 height: 10px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: se-resize;
+                cursor: nwse-resize;
             }
 
             .win-resize-bottom {
@@ -501,7 +503,7 @@
                 height: 5px;
                 background-color: transparent;
                 z-index: 1000;
-                cursor: s-resize;
+                cursor: ns-resize;
             }
 
             .win-title {
@@ -819,7 +821,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "n-resize";
+                        document.body.style.cursor = "ns-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, win.dataset.currX, event.pageY - offsetY, win.dataset.currW, winRect.bottom - event.pageY);
@@ -848,7 +850,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "w-resize";
+                        document.body.style.cursor = "ew-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, event.pageX - offsetX, win.dataset.currY, winRect.right - event.pageX, win.dataset.currH);
@@ -878,7 +880,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "nw-resize";
+                        document.body.style.cursor = "nwse-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, event.pageX - offsetX, event.pageY - offsetY, winRect.right - event.pageX, winRect.bottom - event.pageY);
@@ -909,7 +911,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "sw-resize";
+                        document.body.style.cursor = "nesw-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, event.pageX - offsetX, win.dataset.currY, winRect.right - event.pageX, event.pageY - offsetH);
@@ -938,7 +940,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "e-resize";
+                        document.body.style.cursor = "ew-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, event.pageX - offsetW, win.dataset.currH);
@@ -968,7 +970,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "ne-resize";
+                        document.body.style.cursor = "nesw-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, win.dataset.currX, event.pageY - offsetY, event.pageX - offsetW, winRect.bottom - event.pageY);
@@ -1000,7 +1002,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "se-resize";
+                        document.body.style.cursor = "nwse-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, event.pageX - offsetW, event.pageY - offsetH);
@@ -1029,7 +1031,7 @@
                         application.style.pointerEvents = "none";
                         win.dataset.isResizing = "true";
 
-                        document.body.style.cursor = "s-resize";
+                        document.body.style.cursor = "ns-resize";
 
                         function onMouseMoveWin(event) {
                             setWinGeometry(win.id, win.dataset.currX, win.dataset.currY, win.dataset.currW, event.pageY - offsetH);
@@ -1150,6 +1152,8 @@
                 if (currWin) {
                     topWin(currWin);
 
+                    currWin.style.borderRadius = "10px";
+                    currWin.style.boxShadow = "0 -6px 8px rgba(0, 0, 0, 0.5), 0 6px 8px rgba(0, 0, 0, 0.5), -6px 0 8px rgba(0, 0, 0, 0.5), 6px 0 8px rgba(0, 0, 0, 0.5)";
                     currWin.style.transition = "0.3s";
                     currWin.style.transform = "scale(0.8)";
                     currWin.style.opacity = 0;
@@ -1323,9 +1327,6 @@
             }
 
             async function updateTaskbar() {
-                const response = await fetch("/api/mem/readNode/taskbar");
-                const result = await response.json();
-
                 fetch("/api/mem/readNode/taskbar", {
                     method: "GET",
                     headers: {
@@ -1338,9 +1339,9 @@
                         console.error("Failed to close app: ", data);
                     }
 
-                    for (let i = 0; i < result.node.length; i++) {
-                        const appId = result.node[i].appId;
-                        console.log("Taskbar: ", result.node[i]);
+                    for (let i = 0; i < data.node.length; i++) {
+                        const appId = data.node[i].appId;
+                        console.log("Taskbar: ", data.node[i]);
 
                         const taskbarApp = document.createElement("a");
                         taskbarApp.className = "taskbar-app";

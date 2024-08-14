@@ -5,7 +5,11 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 
-const filesystem = path.join(__dirname, "filesystem");
+const configFile = path.join(__dirname, "..", "config.json");
+const data = fs.readFileSync(configFile, "utf8");
+const configData = JSON.parse(data);
+
+const filesystem = configData.fs_path;
 
 const paths = [
     "/.trash",
@@ -24,7 +28,7 @@ const paths = [
 
 router.post("/createDir", (req, res) => {
     const { oldPath } = req.body;
-    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const newPath = path.join(filesystem, oldPath);
     const status = checkDir(newPath);
 
     if (status) {
@@ -42,7 +46,7 @@ router.post("/createDir", (req, res) => {
 
 router.delete("/rmDir", (req, res) => {
     const { oldPath } = req.body;
-    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const newPath = path.join(filesystem, oldPath);
 
     if (!oldPath) {
         return res.status(400).json({ message: "the provided input is invalid" });
@@ -71,7 +75,7 @@ router.delete("/rmDir", (req, res) => {
 
 router.post("/createFile", (req, res) => {
     const { oldPath, content } = req.body;
-    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const newPath = path.join(filesystem, oldPath);
 
     if (!oldPath || typeof content !== "string") {
         return res.status(400).json({ message: "the provided input is invalid" });
@@ -100,7 +104,7 @@ router.post("/createFile", (req, res) => {
 
 router.delete("/rmFile", (req, res) => {
     const { oldPath } = req.body;
-    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const newPath = path.join(filesystem, oldPath);
 
     if (!oldPath) {
         return res.status(400).json({
@@ -131,7 +135,7 @@ router.delete("/rmFile", (req, res) => {
 
 router.post("/stat", (req, res) => {
     const { oldPath } = req.body;
-    const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", oldPath);
+    const newPath = path.join(filesystem, oldPath);
 
     if (!oldPath) {
         return res.status(400).json({ message: "the provided input is invalid" });
@@ -170,6 +174,10 @@ function copyDir(source, destination) {
     });
 }
 
+function resolvePath(fakePath) {
+    return path.join(filesystem, fakePath);
+}
+
 function checkDir(path) {
     try {
         return fs.existsSync(path) && fs.lstatSync(path).isDirectory();
@@ -192,7 +200,24 @@ function checkFs(callback) {
             fs.readdirSync(filesystem);
 
             paths.forEach(currPath => {
-                const newPath = path.join("/home/christopher/Documents/filo/filo_modules/filesystem", currPath);
+                const newPath = path.join(filesystem, currPath);
+                if (!checkDir(newPath)) {
+                    fs.mkdirSync(newPath);
+                }
+            });
+
+            callback(true, '[' + chalk.green.bold("OK") + ']');
+        } catch (error) {
+            callback(false, '[' + chalk.red.bold("FAILED") + '] ---- [' + chalk.bold("REASON:") + ` ${error}]`);
+        }
+    } else {
+        fs.mkdirSync(filesystem, { recursive: true });
+
+        try {
+            fs.readdirSync(filesystem);
+
+            paths.forEach(currPath => {
+                const newPath = path.join(filesystem, currPath);
                 if (!checkDir(newPath)) {
                     fs.mkdirSync(newPath);
                 }
@@ -209,6 +234,7 @@ module.exports = {
     router,
     fs,
     copyDir,
+    resolvePath,
     checkDir,
     checkFile,
     checkFs

@@ -340,15 +340,27 @@
                     pathInput.style.marginLeft = "250px";
                     pathInput.style.width = "calc(100% - 350px)";
                     explorerView.style.left = "180px";
-                    quickAccess.style.display = "block";
                     explorerView.style.width = "calc(100% - 220px)";
+                    quickAccess.style.display = "block";
                 }
 
                 pathInput.style.width = width - "350px";
             });
 
-            window.onload = function() {
+            window.onload = async function() {
                 searchPath("/usr/home");
+
+                filo.fs.read(`/.appData/${filo.appId}`).then(result => {
+                    if (result.files.length < 1) {
+                        const testObject = {
+                            name: "John",
+                            age: 30
+                        };
+                        filo.fs.createFile(`/.appData/${filo.appId}/test.json`, JSON.stringify(testObject, null, 4));
+                    }
+
+                    console.log("app data result: ", result);
+                });
             }
         </script>
     </body>
