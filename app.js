@@ -362,6 +362,7 @@ function startAppsProcessor(callback) {
         const appName = appConfigData.name;
         const appIndexFile = appConfigData.index_file;
         const appIconFile = appConfigData.icon_file;
+        const appMaxOnStart = appConfigData.max_on_start;
 
         app.get("/app-info/" + appId + "/icon", (req, res) => {
             let iconFilePath = path.join(absPath, appIconFile);
@@ -384,7 +385,8 @@ function startAppsProcessor(callback) {
             appId: appId,
             appName: appName,
             appFile: appIndexFile,
-            appIcon: appIconFile
+            appIcon: appIconFile,
+            maxOnStart: appMaxOnStart
         }
 
         res.status(200).json(appInfo);

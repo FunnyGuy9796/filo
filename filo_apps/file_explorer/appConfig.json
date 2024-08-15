@@ -1,5 +1,6 @@
 {
     "name": "File Explorer",
     "index_file": "index.ejs",
-    "icon_file": "images/folder.svg"
+    "icon_file": "images/folder.svg",
+    "max_on_start": false
 }

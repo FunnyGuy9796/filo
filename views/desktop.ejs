@@ -202,7 +202,46 @@
                 transform: translateX(-50%);
                 transition: opacity 0.3s;
                 opacity: 0;
+                z-index: 1002;
+            }
+
+            .context-menu {
+                position: absolute;
+                padding: 8px;
+                width: 200px;
+                background-color: #282828;
+                border-radius: 10px;
+                box-shadow: 
+                    0 -6px 8px rgba(0, 0, 0, 0.5),
+                    0 6px 8px rgba(0, 0, 0, 0.5),
+                    -6px 0 8px rgba(0, 0, 0, 0.5),
+                    6px 0 8px rgba(0, 0, 0, 0.5);
                 z-index: 1001;
+                user-select: none;
+            }
+
+            .context-menu a {
+                display: block;
+                padding: 5px;
+                width: calc(100% - 10px);
+                background-color: transparent;
+                color: white;
+                border-radius: 10px;
+                text-align: left;
+                transition: 0.2s;
+                user-select: none;
+            }
+
+            .context-menu a:hover {
+                background-color: #005f9e;
+            }
+
+            .context-menu img {
+                margin-top: 4px;
+                margin-right: 4px;
+                width: auto;
+                height: 17px;
+                float: right;
             }
 
             #user-signin {
@@ -668,6 +707,11 @@
             </form>
         </div>
 
+        <div class="context-menu" id="desktop-context" style="display: none;">
+            <a>&nbsp;&nbsp;&nbsp;&nbsp;Display Settings</a>
+            <a>&nbsp;&nbsp;&nbsp;&nbsp;Settings</a>
+        </div>
+
         <div id="tooltip"></div>
 
         <script>
@@ -689,6 +733,8 @@
             const showSignin = document.getElementById("show-signin");
 
             const userSignup = document.getElementById("user-signup");
+
+            const desktopContext = document.getElementById("desktop-context");
 
             const tooltip = document.getElementById("tooltip");
 
@@ -1119,7 +1165,7 @@
 
                 currZ++;
 
-                if (currWinX >= 300) {
+                if (currWinX + win.offsetWidth > viewW || currWinY + win.offsetHeight > viewH - 40) {
                     currWinX = 100;
                     currWinY = 100;
                 } else {
@@ -1341,15 +1387,11 @@
 
                     for (let i = 0; i < data.node.length; i++) {
                         const appId = data.node[i].appId;
-                        console.log("Taskbar: ", data.node[i]);
 
                         const taskbarApp = document.createElement("a");
                         taskbarApp.className = "taskbar-app";
                         taskbarApp.id = "taskbar-" + appId;
                         taskbarApp.draggable = false;
-                        taskbarApp.onclick = function() {
-                            createWin(appId, currWinX, currWinY, 600, 400, false);
-                        };
 
                         const taskbarAppImg = document.createElement("img");
                         taskbarAppImg.id = "taskbar-img-" + appId;
@@ -1362,9 +1404,12 @@
                         fetch("/app-info/" + appId)
                             .then(response => response.json())
                             .then(data => {
-                                console.log("App Info: ", data);
                                 const appRect = taskbarApp.getBoundingClientRect();
                                 addTooltip(taskbarApp, data.appName);
+
+                                taskbarApp.onclick = function() {
+                                    createWin(appId, currWinX, currWinY, 600, 400, data.maxOnStart);
+                                };
                             })
                             .catch(error => console.error("Error: ", error));
                     }
@@ -1448,6 +1493,35 @@
                 clock.innerHTML = day + " " + month + " " + date + "&nbsp;&nbsp;&nbsp;&nbsp;" + String(hours).padStart(2, "0") + ":" + minutes + " " + period;
             }
 
+            function hideContextMenu() {
+                desktopContext.style.display = "none";
+            }
+
+            function showDesktopContext(event) {
+                event.preventDefault();
+
+                let contextX = event.clientX;
+                let contextY = event.clientY;
+                const contextWidth = desktopContext.offsetWidth;
+                const contextHeight = desktopContext.offsetHeight;
+
+                if (contextX + contextWidth > viewW) {
+                    contextX = event.clientX - contextWidth;
+                }
+
+                if (contextY + contextHeight > viewH) {
+                    contextY = event.clientY - contextHeight;
+                }
+
+                desktopContext.style.left = contextX + "px";
+                desktopContext.style.top = contextY + "px";
+
+                desktopContext.style.display = "block";
+            }
+
+            document.onclick = hideContextMenu;
+            wallpaper.oncontextmenu = showDesktopContext;
+
             updateTime();
             
             setInterval(updateTime, 1000);
@@ -1478,7 +1552,7 @@
                             console.error("User Signin: Form submission failed: ", response.statusText);
                         }
                     } catch (error) {
-                        console.error("Error occured: ", error);
+                        console.error("Error: ", error);
                     }
                 });
 
@@ -1502,7 +1576,7 @@
                             console.error("User Signup: Form submission failed: ", response.statusText);
                         }
                     } catch (error) {
-                        console.error("Error occured: ", error);
+                        console.error("Error: ", error);
                     }
                 });
             });

@@ -84,22 +84,49 @@
                 height: auto;
             }
 
-            input[type=text] {
+            #path-input {
                 margin-top: 0;
                 margin-left: 250px;
                 width: calc(100% - 350px);
+                direction: ltr;
+            }
+
+            input[type=text] {
                 padding: 10px;
                 color: white;
                 background-color: #181818;
-                border: 1px none white;
+                border: none;
                 border-radius: 10px;
                 box-sizing: border-box;
                 font-size: 18px;
-                direction: ltr;
             }
 
             input[type=text]:focus {
                 outline: 2px solid #005f9e;
+            }
+
+            #path-links {
+                display: block;
+                position: absolute;
+                top: 9px;
+                margin-left: 250px;
+                padding: 10px;
+                color: white;
+                font-size: 18px;
+                line-height: 1;
+                user-select: none;
+                opacity: 0;
+            }
+
+            #path-links a {
+                padding: 5px;
+                border-radius: 10px;
+                background-color: black;
+                text-align: center;
+            }
+
+            #path-links a:hover {
+                background-color: #282828;
             }
 
             #explorer-view {
@@ -121,10 +148,15 @@
                 padding: 5px;
                 width: 100px;
                 height: 80px;
+                background-color: transparent;
                 border-radius: 10px;
                 text-align: center;
                 user-select: none;
                 transition: 0.2s;
+            }
+
+            .active {
+                background-color: #005f9e;
             }
 
             .explorer-item:hover {
@@ -146,9 +178,6 @@
                 font-size: 14px;
                 line-height: 1.5;
                 user-select: none;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
             }
         </style>
     </head>
@@ -169,16 +198,16 @@
         <a id="path-forward" onclick="navForward()">
             <img src="/file/sys/apps/file_explorer/images/forward-arrow.svg">
         </a>
-        <input id="path-input" type="text">
-        <div id="explorer-view">
-
-        </div>
+        <input id="path-input" type="text" onfocus="hidePathLinks()" onblur="showPathLinks()">
+        <div id="path-links"></div>
+        <div id="explorer-view"></div>
 
         <script>
             const quickAccess = document.getElementById("quick-access");
             const pathBack = document.getElementById("path-back");
             const pathForward = document.getElementById("path-forward");
             const pathInput = document.getElementById("path-input");
+            const pathLinks = document.getElementById("path-links");
             const explorerView = document.getElementById("explorer-view");
 
             let filePath = "/usr/home";
@@ -213,9 +242,10 @@
                                         let isDir = file.dir;
                                         const name = file.name;
                                         let ext = "";
+                                        const showStatus = name[0] !== "." || appData.show_hidden;
 
-                                        if (name[0] !== ".") {
-                                            filePath = `${path}${name}`;
+                                        if (showStatus) {
+                                            filePath = `${path}/${name}`;
                                             if (path !== "/") {
                                                 filePath = `${path}/${name}`;
                                             }
@@ -274,7 +304,7 @@
                                     });
 
                                     filePath = path;
-                                    pathInput.value = path;
+                                    showPathLinks();
                                 }
                             });
                         }
@@ -283,6 +313,59 @@
                         console.error("there was an error retrieving content at the specified path");
                         searchPath("/usr/home");
                     });
+            }
+
+            function hidePathLinks() {
+                pathLinks.style.opacity = 0;
+                pathLinks.style.pointerEvents = "none";
+                pathInput.value = filePath;
+            }
+
+            function getRelativePath(target) {
+                let targetIndex = filePath.indexOf(target);
+
+                if (targetIndex !== -1) {
+                    let result = filePath.substring(0, targetIndex + target.length);
+                    return result;
+                } else {
+                    return null;
+                }
+            }
+
+            function showPathLinks() {
+                const pathParts = filePath.split("/").filter(part => part.trim() !== "");
+                const pathInputRect = pathInput.getBoundingClientRect();
+
+                pathInput.value = "";
+                pathLinks.innerHTML = "";
+                
+                for (let i = 0; i < pathParts.length; i++) {
+                    const pathSlash = document.createElement("span");
+                    pathSlash.id = `slash-${pathParts[i]}-${i}`;
+                    pathSlash.textContent = " / ";
+                    pathLinks.appendChild(pathSlash);
+
+                    const pathPart = document.createElement("a");
+                    pathPart.id = `path-${pathParts[i]}-${i}`;
+                    pathPart.textContent = pathParts[i];
+                    const relativePath = getRelativePath(pathParts[i]);
+                    pathPart.onclick = function() {
+                        searchPath(relativePath);
+                    };
+                    pathLinks.appendChild(pathPart);
+
+                    const pathPartRect = pathPart.getBoundingClientRect();
+
+                    if (pathPartRect.right > pathInputRect.right) {
+                        pathPart.textContent = "...";
+                        break;
+                    } else if (pathPartRect.left > pathInputRect.right) {
+                        pathPart.remove();
+                    }
+                }
+
+                pathLinks.style.opacity = 1;
+                pathLinks.style.pointerEvents = "auto";
             }
 
             function filter() {
@@ -317,8 +400,8 @@
 
             pathInput.addEventListener("keydown", function(event) {
                 if (event.key === "Enter") {
-                    pathInput.blur();
                     searchPath(pathInput.value);
+                    pathInput.blur();
                 }
             });
 
@@ -344,22 +427,34 @@
                     quickAccess.style.display = "block";
                 }
 
-                pathInput.style.width = width - "350px";
+                showPathLinks();
             });
 
-            window.onload = async function() {
-                searchPath("/usr/home");
+            function getData() {
+                filo.fs.read(`/.appData/${filo.appId}/config.json`).then(result => {
+                    appData = result;
+                });
+            }
 
+            window.onload = async function() {
                 filo.fs.read(`/.appData/${filo.appId}`).then(result => {
                     if (result.files.length < 1) {
-                        const testObject = {
-                            name: "John",
-                            age: 30
+                        const configObj = {
+                            show_hidden: false
                         };
-                        filo.fs.createFile(`/.appData/${filo.appId}/test.json`, JSON.stringify(testObject, null, 4));
-                    }
 
-                    console.log("app data result: ", result);
+                        filo.fs.createFile(`/.appData/${filo.appId}/config.json`, JSON.stringify(configObj, null, 4)).then(result => {
+                            if (result.message !== "success") {
+                                filo.ui.exit();
+                            }
+
+                            getData();
+                        });
+                    } else {
+                        getData();
+                    }
+                }).then(() => {
+                    searchPath("/usr/home");
                 });
             }
         </script>

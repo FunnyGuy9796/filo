@@ -12,9 +12,9 @@ const configData = JSON.parse(data);
 const filesystem = configData.fs_path;
 
 const paths = [
-    "/.trash",
     "/.appData",
     "/sys",
+    "/sys/trash",
     "/sys/apps",
     "/usr",
     "/usr/home",

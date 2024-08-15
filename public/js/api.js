@@ -52,7 +52,7 @@ class filo {
                 tooltip.style.transform = "translateX(-50%)";
                 tooltip.style.transition = "opacity 0.3s";
                 tooltip.style.opacity = 0;
-                tooltip.style.zIndex = 1001;
+                tooltip.style.zIndex = 1002;
                 tooltip.style.left = objRect.left + (objRect.width / 2) + "px";
                 tooltip.style.top = objRect.top - 50 + "px";
                 tooltip.style.userSelect = "none";
@@ -295,7 +295,7 @@ class filo {
 
         static async read(path) {
             try {
-                const response = await fetch(`/file/.appData/${filo.appId}`);
+                const response = await fetch(`/file/${path}`);
 
                 const result = await response.json();
 
