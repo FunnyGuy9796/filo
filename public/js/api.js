@@ -95,6 +95,64 @@ class filo {
             });
         }
 
+        static showContextMenu(event, menu) {
+            event.preventDefault();
+
+            const contextMenus = window.parent.document.getElementsByClassName("context-menu");
+
+            if (contextMenus) {
+                for (let i = 0; i < contextMenus.length; i++) {
+                    contextMenus[i].remove();
+                }
+            }
+
+            const newContext = menu.cloneNode(true);
+            const newButtons = newContext.getElementsByTagName("a");
+            const newDropdowns = newContext.getElementsByTagName("div");
+
+            for (let i = 0; i < newDropdowns.length; i++) {
+                const dropdownButtons = newDropdowns[i].getElementsByTagName("a");
+
+                dropdownButtons[0].remove();
+
+                const forName = newDropdowns[i].dataset.for;
+                const currButton = document.getElementById(forName);
+
+                currButton.onmouseover = function() {
+                    newDropdowns[i].style.left = contextX + newContext.getBoundingClientRect().width + "px";
+                    newDropdowns[i].style.top = contextY + "px";
+                    newDropdowns[i].style.display = "block";
+                };
+
+                currButton.onmouseout = function() {
+                    newDropdowns[i].style.display = "none";
+                };
+            }
+
+            window.parent.document.body.appendChild(newContext);
+
+            const uuid = window.location.pathname.split("/")[3];
+            const win = window.parent.document.getElementById("win-" + uuid);
+            const iframe = win.querySelector("iframe");
+
+            let contextX = event.clientX + win.offsetLeft;
+            let contextY = event.clientY + iframe.offsetTop + win.offsetTop;
+
+            for (let i = 0; i < newButtons.length; i++) {
+                const funcName = newButtons[i].dataset.function;
+
+                if (typeof window[funcName] === "function") {
+                    newButtons[i].onclick = function() {
+                        window[funcName]();
+                    };
+                }
+            }
+
+            newContext.style.left = contextX + "px";
+            newContext.style.top = contextY + "px";
+            newContext.style.display = "block";
+        }
+
         static exit() {
             if (window.parent && typeof window.parent.stopApp === "function") {
                 window.parent.stopApp(window.location.pathname.split("/")[2], window.location.pathname.split("/")[3]);
@@ -388,5 +446,11 @@ class filo {
         }
     }
 }
+
+document.addEventListener("click", function() {
+    if (window.parent && typeof window.parent.hideContextMenu === "function") {
+        window.parent.hideContextMenu();
+    }
+});
 
 window.filo = filo;

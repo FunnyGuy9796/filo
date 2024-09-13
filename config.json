@@ -3,5 +3,5 @@
     "services_path": "/home/christopher/Documents/filo/filo_services",
     "apps_path": "/home/christopher/Documents/filo/filo_apps",
     "fs_path": "/home/christopher/Documents/filo/filo_modules/filesystem",
-    "network_required": true
+    "network_required": false
 }

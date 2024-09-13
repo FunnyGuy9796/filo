@@ -78,6 +78,7 @@
                 margin-right: auto;
                 width: 80%;
                 height: auto;
+                user-select: none;
             }
 
             .notify-title {
@@ -545,11 +546,21 @@
                 cursor: ns-resize;
             }
 
+            .win-image {
+                display: block;
+                position: absolute;
+                top: 10px;
+                left: 20px;
+                width: auto;
+                height: 20px;
+                user-select: none;
+            }
+
             .win-title {
                 display: block;
                 position: absolute;
                 top: -7px;
-                left: 20px;
+                left: 50px;
                 height: 20px;
                 color: white;
                 font-size: 18px;
@@ -707,7 +718,7 @@
             </form>
         </div>
 
-        <div class="context-menu" id="desktop-context" style="display: none;">
+        <div id="desktop-context" style="display: none;">
             <a>&nbsp;&nbsp;&nbsp;&nbsp;Display Settings</a>
             <a>&nbsp;&nbsp;&nbsp;&nbsp;Settings</a>
         </div>
@@ -810,8 +821,7 @@
             }
 
             window.showNotify = function(title, body, actionText, action) {
-                window.notifyFunc = action;
-                notifyQueue.push({ notifTitle: title, notifBody: body, notifActTxt: actionText, notifAct: window.notifyFunc });
+                notifyQueue.push({ notifTitle: title, notifBody: body, notifActTxt: actionText, notifAct: action });
 
                 if (!isNotifying) {
                     notifyLoop();
@@ -1096,6 +1106,11 @@
                 };
                 win.appendChild(resizeBottom);
 
+                const appImg = document.createElement("img");
+                appImg.id = "appImg-" + uuid;
+                appImg.className = "win-image";
+                win.appendChild(appImg);
+
                 const title = document.createElement("p");
                 title.id = "title-" + uuid;
                 title.className = "win-title";
@@ -1145,6 +1160,7 @@
                         topWin(win);
                     });
 
+                    appImg.src = "/app-info/" + appId + "/icon";
                     title.innerText = appDoc.title;
                 };
 
@@ -1493,17 +1509,29 @@
                 clock.innerHTML = day + " " + month + " " + date + "&nbsp;&nbsp;&nbsp;&nbsp;" + String(hours).padStart(2, "0") + ":" + minutes + " " + period;
             }
 
-            function hideContextMenu() {
-                desktopContext.style.display = "none";
+            window.hideContextMenu = function() {
+                const contextMenus = document.getElementsByClassName("context-menu");
+
+                if (contextMenus) {
+                    for (let i = 0; i < contextMenus.length; i++) {
+                        contextMenus[i].remove();
+                    }
+                }
             }
 
             function showDesktopContext(event) {
                 event.preventDefault();
 
+                hideContextMenu();
+
+                const newContext = desktopContext.cloneNode(true);
+                document.body.appendChild(newContext);
+                newContext.className = "context-menu";
+
                 let contextX = event.clientX;
                 let contextY = event.clientY;
-                const contextWidth = desktopContext.offsetWidth;
-                const contextHeight = desktopContext.offsetHeight;
+                const contextWidth = newContext.offsetWidth;
+                const contextHeight = newContext.offsetHeight;
 
                 if (contextX + contextWidth > viewW) {
                     contextX = event.clientX - contextWidth;
@@ -1513,10 +1541,10 @@
                     contextY = event.clientY - contextHeight;
                 }
 
-                desktopContext.style.left = contextX + "px";
-                desktopContext.style.top = contextY + "px";
+                newContext.style.left = contextX + "px";
+                newContext.style.top = contextY + "px";
 
-                desktopContext.style.display = "block";
+                newContext.style.display = "block";
             }
 
             document.onclick = hideContextMenu;

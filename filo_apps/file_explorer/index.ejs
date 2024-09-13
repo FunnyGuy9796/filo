@@ -129,6 +129,11 @@
                 background-color: #282828;
             }
 
+            #path-links span {
+                top: 13px;
+                font-size: 14px;
+            }
+
             #explorer-view {
                 display: grid;
                 position: absolute;
@@ -179,6 +184,60 @@
                 line-height: 1.5;
                 user-select: none;
             }
+
+            .context-menu {
+                position: absolute;
+                padding: 8px;
+                width: 200px;
+                background-color: #282828;
+                border-radius: 10px;
+                box-shadow: 
+                    0 -6px 8px rgba(0, 0, 0, 0.5),
+                    0 6px 8px rgba(0, 0, 0, 0.5),
+                    -6px 0 8px rgba(0, 0, 0, 0.5),
+                    6px 0 8px rgba(0, 0, 0, 0.5);
+                z-index: 1001;
+                user-select: none;
+            }
+
+            .context-menu a {
+                display: block;
+                padding: 5px;
+                width: calc(100% - 10px);
+                background-color: transparent;
+                color: white;
+                border-radius: 10px;
+                text-align: left;
+                transition: 0.2s;
+                user-select: none;
+            }
+
+            .context-menu a:hover {
+                background-color: #005f9e;
+            }
+
+            .context-menu div {
+                position: absolute;
+                padding: 8px;
+                width: 200px;
+                background-color: #282828;
+                border-radius: 10px;
+                box-shadow: 
+                    0 -6px 8px rgba(0, 0, 0, 0.5),
+                    0 6px 8px rgba(0, 0, 0, 0.5),
+                    -6px 0 8px rgba(0, 0, 0, 0.5),
+                    6px 0 8px rgba(0, 0, 0, 0.5);
+                z-index: 1001;
+                user-select: none;
+            }
+
+            .context-menu img {
+                margin-top: 4px;
+                margin-right: 4px;
+                width: auto;
+                height: 17px;
+                float: right;
+            }
         </style>
     </head>
 
@@ -192,15 +251,30 @@
             <a class="quick-link" id="quick-pictures" onclick="searchPath(`/usr/home/Pictures`)">Pictures</a>
             <a class="quick-link" id="quick-videos" onclick="searchPath(`/usr/home/Videos`)">Videos</a>
         </div>
+
         <a id="path-back" onclick="navBack()">
             <img src="/file/sys/apps/file_explorer/images/back-arrow.svg">
         </a>
+
         <a id="path-forward" onclick="navForward()">
             <img src="/file/sys/apps/file_explorer/images/forward-arrow.svg">
         </a>
+
         <input id="path-input" type="text" onfocus="hidePathLinks()" onblur="showPathLinks()">
+
         <div id="path-links"></div>
+
         <div id="explorer-view"></div>
+
+        <div class="context-menu" id="explorer-context" style="display: none;">
+            <a id="context-sort">&nbsp;&nbsp;&nbsp;&nbsp;Sort by<img src="/file/sys/apps/file_explorer/images/forward-arrow.svg">
+                <div style="display: none;" data-for="context-sort">
+                    <a>&nbsp;&nbsp;&nbsp;&nbsp;Test</a>
+                    <a>&nbsp;&nbsp;&nbsp;&nbsp;Test</a>
+                </div>
+            </a>
+            <a id="context-refresh" data-function="searchPath">&nbsp;&nbsp;&nbsp;&nbsp;Refresh</a>
+        </div>
 
         <script>
             const quickAccess = document.getElementById("quick-access");
@@ -209,6 +283,7 @@
             const pathInput = document.getElementById("path-input");
             const pathLinks = document.getElementById("path-links");
             const explorerView = document.getElementById("explorer-view");
+            const explorerContext = document.getElementById("explorer-context");
 
             let filePath = "/usr/home";
             let prevPaths = [];
@@ -218,7 +293,7 @@
 
             function searchPath(path) {
                 if (path === "" || path == undefined) {
-                    path = "/";
+                    path = filePath;
                 }
 
                 if (prevPaths[prevPaths.length - 1] !== path) {
@@ -318,6 +393,7 @@
             function hidePathLinks() {
                 pathLinks.style.opacity = 0;
                 pathLinks.style.pointerEvents = "none";
+                pathLinks.innerHTML = "";
                 pathInput.value = filePath;
             }
 
@@ -338,29 +414,36 @@
 
                 pathInput.value = "";
                 pathLinks.innerHTML = "";
-                
-                for (let i = 0; i < pathParts.length; i++) {
+
+                if (pathParts.length < 1) {
                     const pathSlash = document.createElement("span");
-                    pathSlash.id = `slash-${pathParts[i]}-${i}`;
+                    pathSlash.id = `slash-0-0`;
                     pathSlash.textContent = " / ";
                     pathLinks.appendChild(pathSlash);
+                } else {
+                    for (let i = 0; i < pathParts.length; i++) {
+                        const pathSlash = document.createElement("span");
+                        pathSlash.id = `slash-${pathParts[i]}-${i}`;
+                        pathSlash.textContent = " / ";
+                        pathLinks.appendChild(pathSlash);
 
-                    const pathPart = document.createElement("a");
-                    pathPart.id = `path-${pathParts[i]}-${i}`;
-                    pathPart.textContent = pathParts[i];
-                    const relativePath = getRelativePath(pathParts[i]);
-                    pathPart.onclick = function() {
-                        searchPath(relativePath);
-                    };
-                    pathLinks.appendChild(pathPart);
+                        const pathPart = document.createElement("a");
+                        pathPart.id = `path-${pathParts[i]}-${i}`;
+                        pathPart.textContent = pathParts[i];
+                        const relativePath = getRelativePath(pathParts[i]);
+                        pathPart.onclick = function() {
+                            searchPath(relativePath);
+                        };
+                        pathLinks.appendChild(pathPart);
 
-                    const pathPartRect = pathPart.getBoundingClientRect();
+                        const pathPartRect = pathPart.getBoundingClientRect();
 
-                    if (pathPartRect.right > pathInputRect.right) {
-                        pathPart.textContent = "...";
-                        break;
-                    } else if (pathPartRect.left > pathInputRect.right) {
-                        pathPart.remove();
+                        if (pathPartRect.right > pathInputRect.right) {
+                            pathPart.textContent = "...";
+                            break;
+                        } else if (pathPartRect.left > pathInputRect.right) {
+                            pathPart.remove();
+                        }
                     }
                 }
 
@@ -404,6 +487,10 @@
                     pathInput.blur();
                 }
             });
+            
+            explorerView.oncontextmenu = function(event) {
+                filo.ui.showContextMenu(event, explorerContext);
+            };
 
             window.addEventListener("resize", function() {
                 const width = window.innerWidth;
@@ -414,6 +501,7 @@
                     pathForward.style.left = "60px";
                     pathInput.style.marginLeft = "90px";
                     pathInput.style.width = "calc(100% - 190px)";
+                    pathLinks.style.marginLeft = "90px";
                     quickAccess.style.display = "none";
                     explorerView.style.left = 0;
                     explorerView.style.width = "100%";
@@ -422,6 +510,7 @@
                     pathForward.style.left = "220px";
                     pathInput.style.marginLeft = "250px";
                     pathInput.style.width = "calc(100% - 350px)";
+                    pathLinks.style.marginLeft = "250px";
                     explorerView.style.left = "180px";
                     explorerView.style.width = "calc(100% - 220px)";
                     quickAccess.style.display = "block";
@@ -431,19 +520,19 @@
             });
 
             function getData() {
-                filo.fs.read(`/.appData/${filo.appId}/config.json`).then(result => {
+                filo.fs.read(`${filo.fs.appData}/config.json`).then(result => {
                     appData = result;
                 });
             }
 
             window.onload = async function() {
-                filo.fs.read(`/.appData/${filo.appId}`).then(result => {
+                filo.fs.read(filo.fs.appData).then(result => {
                     if (result.files.length < 1) {
                         const configObj = {
                             show_hidden: false
                         };
 
-                        filo.fs.createFile(`/.appData/${filo.appId}/config.json`, JSON.stringify(configObj, null, 4)).then(result => {
+                        filo.fs.createFile(`${filo.fs.appData}/config.json`, JSON.stringify(configObj, null, 4)).then(result => {
                             if (result.message !== "success") {
                                 filo.ui.exit();
                             }
