@@ -151,8 +151,8 @@
 
             .explorer-item {
                 padding: 5px;
+                padding-bottom: 0;
                 width: 100px;
-                height: 80px;
                 background-color: transparent;
                 border-radius: 10px;
                 text-align: center;
@@ -291,6 +291,8 @@
 
             let appData;
 
+            let errCount = 0;
+
             function searchPath(path) {
                 if (path === "" || path == undefined) {
                     path = filePath;
@@ -379,14 +381,24 @@
                                     });
 
                                     filePath = path;
+                                    const pathParts = filePath.split("/");
+
                                     showPathLinks();
+
+                                    filo.ui.setTitle(document.title + " - " + pathParts[pathParts.length - 1]);
                                 }
                             });
                         }
                     })
                     .catch(error => {
                         console.error("there was an error retrieving content at the specified path");
-                        searchPath("/usr/home");
+                        errCount++;
+
+                        if (errCount > 3) {
+                            filo.ui.exit();
+                        } else {
+                            searchPath("/usr/home");
+                        }
                     });
             }
 

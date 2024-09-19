@@ -842,6 +842,14 @@
                 }
             }
 
+            window.setWinTitle = function(winId, winTitle) {
+                const currTitle = document.getElementById("title-" + winId);
+
+                if (currTitle) {
+                    currTitle.innerText = winTitle;
+                }
+            }
+
             window.createWin = function(appId, x, y, width, height, isMax) {
                 let uuid = Math.floor(Math.random() * 1001);
                 while (windows.some(win => win.uid === uuid)) {

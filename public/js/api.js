@@ -23,6 +23,18 @@ class filo {
             }
         }
 
+        static setTitle(title) {
+            if (title === null) {
+                title = document.title;
+            }
+
+            if (window.parent && typeof window.parent.setWinTitle === "function") {
+                window.parent.setWinTitle(window.location.pathname.split("/")[3], title);
+            } else {
+                console.error("setTitle(): Parent function is not available");
+            }
+        }
+
         static notify(title, body, actionText, action) {
             if (window.parent && typeof window.parent.showNotify === "function") {
                 window.parent.showNotify(title, body, actionText, action);
