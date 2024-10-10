@@ -307,7 +307,8 @@ function startApp(appId, uuid) {
 function startAppsProcessor(callback) {
     const defaultApps = [
         "about",
-        "file_explorer"
+        "file_explorer",
+        "image_viewer"
     ];
 
     for (let i = 0; i < defaultApps.length; i++) {

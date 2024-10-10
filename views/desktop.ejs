@@ -1160,6 +1160,7 @@
                 const application = document.createElement("iframe");
                 application.id = "app-" + uuid;
                 application.src = "/app/" + appId + "/" + uuid;
+                application.sandbox = "allow-scripts allow-same-origin";
 
                 application.onload = () => {
                     const appDoc = application.contentDocument || application.contentWindow.document;

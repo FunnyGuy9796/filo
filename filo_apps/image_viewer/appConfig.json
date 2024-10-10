@@ -1,0 +1,6 @@
+{
+    "name": "Image Viewer",
+    "index_file": "index.ejs",
+    "icon_file": "images/icon.svg",
+    "max_on_start": false
+}

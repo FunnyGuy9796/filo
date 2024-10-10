@@ -1,5 +1,6 @@
 {
     "name": "About",
     "index_file": "index.ejs",
-    "icon_file": "images/github.svg"
+    "icon_file": "images/github.svg",
+    "max_on_start": false
 }
